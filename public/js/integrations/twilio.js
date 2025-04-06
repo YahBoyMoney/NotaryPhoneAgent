@@ -71,9 +71,11 @@ const TwilioIntegration = (function() {
         const isMockToken = token && token.startsWith('mock_token_');
         
         if (isMockToken) {
-            console.log('Received mock token, using mock implementation');
-            isMockMode = true;
-            useMockImplementation();
+            console.error('Real Twilio functionality requested but received mock token');
+            notifyListeners('error', { 
+                message: 'Real Twilio functionality was requested but server returned a mock token. Please configure Twilio credentials in your Netlify environment variables.',
+                code: 'MOCK_TOKEN_REJECTED'
+            });
             return;
         }
         
@@ -289,11 +291,27 @@ const TwilioIntegration = (function() {
         return fetch(config.tokenEndpoint)
             .then(response => {
                 if (!response.ok) {
+                    const statusCode = response.status;
+                    if (statusCode === 500) {
+                        throw new Error('Twilio credentials missing. Please configure TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in your Netlify environment variables.');
+                    }
                     throw new Error(`Failed to get Twilio access token: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
             .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (!data.token) {
+                    throw new Error('Token missing from server response');
+                }
+                
+                if (data.token.startsWith('mock_token_')) {
+                    throw new Error('Real Twilio functionality requested but received mock token. Please configure Twilio credentials.');
+                }
+                
                 console.log('Successfully received Twilio token');
                 initDevice(data.token);
                 return data;
@@ -301,16 +319,12 @@ const TwilioIntegration = (function() {
             .catch(error => {
                 console.error('Error getting access token:', error);
                 notifyListeners('error', { 
-                    message: 'Failed to get access token: ' + error.message,
+                    message: 'Failed to get real Twilio access token: ' + error.message,
                     code: 'TOKEN_ERROR',
                     details: error
                 });
                 
-                // Fall back to mock implementation
-                console.log('Falling back to mock implementation due to token error');
-                isMockMode = true;
-                useMockImplementation();
-                return { mock: true, error: error.message };
+                throw error; // Let caller handle the error instead of falling back to mock
             });
     }
     

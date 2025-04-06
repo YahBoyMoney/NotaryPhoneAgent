@@ -82,6 +82,28 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
+                <!-- Add this error container at the top of the page -->
+                <div id="twilioErrorContainer" class="alert alert-danger d-none">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>Twilio Configuration Error</h5>
+                    <p id="twilioErrorMessage">No error message available</p>
+                    <div class="mt-3">
+                        <h6>How to fix:</h6>
+                        <ol>
+                            <li>Sign up for a <a href="https://www.twilio.com/try-twilio" target="_blank">Twilio account</a></li>
+                            <li>Purchase a phone number (~$1/month)</li>
+                            <li>Copy your Account SID and Auth Token from the Twilio dashboard</li>
+                            <li>Add these values as environment variables in your Netlify dashboard:
+                                <ul class="mt-2">
+                                    <li><code>TWILIO_ACCOUNT_SID</code> - Your Twilio Account SID</li>
+                                    <li><code>TWILIO_AUTH_TOKEN</code> - Your Twilio Auth Token</li>
+                                    <li><code>TWILIO_PHONE_NUMBER</code> - Your Twilio phone number in E.164 format (e.g., +12223334444)</li>
+                                </ul>
+                            </li>
+                            <li>Redeploy your Netlify site</li>
+                        </ol>
+                    </div>
+                </div>
+
                 <!-- Active Call Section -->
                 <div class="row mb-4">
                     <div class="col-12">
@@ -598,6 +620,36 @@
                         // We're in real mode, hide the mock indicators
                         document.getElementById('mockModeBanner').style.display = 'none';
                         document.getElementById('mockModeAlert').style.display = 'none';
+                    }
+                });
+            }
+
+            // Add this script to listen for errors and show the container
+            function showTwilioError(message) {
+                const errorContainer = document.getElementById('twilioErrorContainer');
+                const errorMessage = document.getElementById('twilioErrorMessage');
+                
+                if (errorContainer && errorMessage) {
+                    errorMessage.textContent = message;
+                    errorContainer.classList.remove('d-none');
+                    
+                    // Hide the mock banner since we're showing a more specific error
+                    const mockBanner = document.getElementById('mockModeBanner');
+                    if (mockBanner) {
+                        mockBanner.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Check if TwilioIntegration is available and set up error listener
+            if (typeof TwilioIntegration !== 'undefined') {
+                TwilioIntegration.addListener(function(source, event) {
+                    if (event.event === 'error') {
+                        if (event.data.code === 'TOKEN_ERROR' || 
+                            event.data.code === 'MOCK_TOKEN_REJECTED' ||
+                            event.data.message.includes('credential')) {
+                            showTwilioError(event.data.message);
+                        }
                     }
                 });
             }

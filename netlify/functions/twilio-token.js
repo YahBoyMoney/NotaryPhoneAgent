@@ -30,15 +30,13 @@ exports.handler = async function(event, context) {
     // For development and demo purposes, return a mock token when
     // environment variables are not set
     if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-      console.log('Using mock token - No Twilio credentials found in environment variables');
-      
+      console.error('Missing Twilio credentials. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.');
       return {
-        statusCode: 200,
+        statusCode: 500,
         headers,
-        body: JSON.stringify({ 
-          token: 'mock_token_' + Math.random().toString(36).substring(2, 15),
-          mock: true,
-          message: 'This is a mock token for development. Configure TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables for real functionality.'
+        body: JSON.stringify({
+          error: 'Missing Twilio credentials. Please add TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN to your environment variables.',
+          setup_instructions: 'Go to Netlify dashboard > Site settings > Environment variables to add your Twilio credentials'
         })
       };
     }
