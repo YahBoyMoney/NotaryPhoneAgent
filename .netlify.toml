@@ -4,8 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  # Explicitly disable Python
-  PYTHON_VERSION = ""
+  PYTHON_VERSION = "3.9.12"
 
 [[redirects]]
   from = "/*"
