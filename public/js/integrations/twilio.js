@@ -67,68 +67,51 @@ const TwilioIntegration = (function() {
     function initDevice(token) {
         accessToken = token;
         
-        // Check if token is a mock token (from development environment)
+        // Check if token is a mock token (indicating missing credentials)
         const isMockToken = token && token.startsWith('mock_token_');
         
         if (isMockToken) {
-            console.error('Real Twilio functionality requested but received mock token');
+            console.error('Real Twilio functionality requested but received a mock token.');
             notifyListeners('error', { 
-                message: 'Unable to use Twilio: Missing Twilio credentials in your environment.',
-                code: 'TWILIO_CREDENTIALS_MISSING'
+                message: 'Real Twilio functionality requested but server returned a mock token. Please configure your Twilio credentials in Netlify environment variables.',
+                code: 'MOCK_TOKEN_REJECTED'
             });
             
-            // Show a prominent banner alerting the user they're in mock mode
+            // Display a prominent banner for mock mode
             showMockModeBanner();
-            
-            // Fall back to mock implementation
             isMockMode = true;
             useMockImplementation();
             return;
         }
         
-        // Check if the Twilio SDK is available
+        // Check if the Twilio SDK is loaded properly
         if (typeof Twilio === 'undefined' || typeof Twilio.Device === 'undefined') {
             console.error('Twilio SDK not loaded');
             notifyListeners('error', { 
                 message: 'Twilio SDK not loaded. Please check your internet connection and refresh the page.',
                 code: 'TWILIO_SDK_MISSING'
             });
-            
-            // Show a prominent banner alerting the user they're in mock mode
             showMockModeBanner();
-            
-            // Fall back to mock implementation
             isMockMode = true;
             useMockImplementation();
             return;
         }
         
         try {
-            // If there's an existing device, destroy it first
             if (twilioDevice) {
                 twilioDevice.destroy();
             }
-            
-            // Create a new device with the token
             twilioDevice = new Twilio.Device(token, {
                 codecPreferences: ['opus', 'pcmu'],
                 fakeLocalDTMF: true,
                 enableRingingState: true
             });
-            
-            // Set up event handlers
             setupDeviceEventHandlers();
-            
-            // Schedule token refresh (tokens typically expire after 1 hour)
             scheduleTokenRefresh();
-            
             notifyListeners('deviceReady', { device: twilioDevice });
             isInitialized = true;
             isMockMode = false;
-            
-            // Remove mock mode banner if it exists
             removeMockModeBanner();
-            
             console.log('Twilio device initialized successfully');
         } catch (error) {
             console.error('Error initializing Twilio device:', error);
@@ -137,11 +120,7 @@ const TwilioIntegration = (function() {
                 code: 'DEVICE_INIT_FAILED',
                 details: error 
             });
-            
-            // Show a prominent banner alerting the user they're in mock mode
             showMockModeBanner();
-            
-            // Fall back to mock implementation
             isMockMode = true;
             useMockImplementation();
         }

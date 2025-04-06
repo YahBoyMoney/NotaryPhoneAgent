@@ -27,16 +27,17 @@ exports.handler = async function(event, context) {
   }
 
   try {
-    // For development and demo purposes, return a mock token when
-    // environment variables are not set
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+    if (!accountSid || !authToken) {
       console.error('Missing Twilio credentials. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.');
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({
           error: 'Missing Twilio credentials. Please add TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN to your environment variables.',
-          setup_instructions: 'Go to Netlify dashboard > Site settings > Environment variables to add your Twilio credentials'
+          setup_instructions: 'Go to Netlify dashboard > Site settings > Environment variables and add your Twilio credentials'
         })
       };
     }
@@ -53,8 +54,8 @@ exports.handler = async function(event, context) {
 
     // Create an access token which we will sign and return to the client
     const token = new AccessToken(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN,
+      accountSid,
+      authToken,
       Math.random().toString(36).substring(2, 15) // Random identity for the client
     );
 
