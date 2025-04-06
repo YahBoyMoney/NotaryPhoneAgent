@@ -1,0 +1,10 @@
+{
+  "name": "notary-voice-agent",
+  "version": "1.0.0",
+  "description": "Notary Voice Agent Dashboard",
+  "scripts": {
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+} 
