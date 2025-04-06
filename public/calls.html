@@ -230,13 +230,15 @@
                     <form id="callForm">
                         <div class="mb-3">
                             <label for="callClientSelect" class="form-label">Select Client</label>
-                            <select class="form-select" id="callClientSelect" required>
+                            <select class="form-select" id="callClientSelect">
+                                <option value="">Type a name or select a client</option>
                                 <!-- Client options will be populated via JavaScript -->
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="callPhone" class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="callPhone" required>
+                            <input type="tel" class="form-control" id="callPhone" required placeholder="(555) 123-4567">
+                            <small class="text-muted">You can directly enter a phone number or select a client above</small>
                         </div>
                         <div class="mb-3">
                             <div class="form-check form-switch">
@@ -353,6 +355,9 @@
                 console.log('NotaryVoiceAgent initialized');
             }
             
+            // Populate client select dropdown
+            populateClientSelect();
+            
             // Add custom event listener for Make Call button
             const newCallBtn = document.getElementById('newCallBtn');
             if (newCallBtn) {
@@ -364,25 +369,45 @@
                 });
             }
             
+            // Add event listener for client selection
+            const callClientSelect = document.getElementById('callClientSelect');
+            if (callClientSelect) {
+                callClientSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const phoneNumber = selectedOption.getAttribute('data-phone');
+                    
+                    console.log('Client selected:', selectedOption.textContent);
+                    console.log('Phone number:', phoneNumber);
+                    
+                    if (phoneNumber) {
+                        document.getElementById('callPhone').value = phoneNumber;
+                    }
+                });
+            }
+            
             // Add custom event listener for Start Call button
             const startCallBtn = document.getElementById('startCallBtn');
             if (startCallBtn) {
                 console.log('Adding event listener to startCallBtn');
                 startCallBtn.addEventListener('click', function() {
                     console.log('Start Call button clicked');
-                    const phoneNumber = document.getElementById('callPhone').value;
+                    const phoneNumber = document.getElementById('callPhone').value.trim();
                     console.log('Phone number:', phoneNumber);
                     
                     if (!phoneNumber) {
-                        alert('Please enter a phone number');
+                        alert('Please enter a phone number or select a client');
                         return;
                     }
                     
                     const options = {
-                        recording: document.getElementById('newCallRecordingSwitch').checked
+                        recording: document.getElementById('newCallRecordingSwitch').checked,
+                        notes: document.getElementById('callNotes').value
                     };
                     
                     console.log('Call options:', options);
+                    
+                    // Get the modal reference
+                    const makeCallModal = bootstrap.Modal.getInstance(document.getElementById('makeCallModal'));
                     
                     // Try to make the call using NotaryVoiceAgent
                     if (typeof NotaryVoiceAgent !== 'undefined') {
@@ -458,6 +483,98 @@
                     
                     updateCallDisplay(null);
                 });
+            }
+            
+            // Function to populate client select dropdown
+            function populateClientSelect() {
+                const callClientSelect = document.getElementById('callClientSelect');
+                if (!callClientSelect) return;
+                
+                // Clear existing options (except the first one)
+                while (callClientSelect.options.length > 1) {
+                    callClientSelect.remove(1);
+                }
+                
+                // Try to get clients from localStorage
+                let clients = [];
+                try {
+                    clients = JSON.parse(localStorage.getItem('notaryClients') || '[]');
+                } catch (e) {
+                    console.error('Error parsing clients from localStorage:', e);
+                }
+                
+                // If no clients in localStorage, use sample data
+                if (clients.length === 0) {
+                    clients = [
+                        { id: 1, name: 'John Smith', phone: '(555) 123-4567', email: 'john.smith@example.com' },
+                        { id: 2, name: 'Jane Doe', phone: '(555) 987-6543', email: 'jane.doe@example.com' },
+                        { id: 3, name: 'Robert Johnson', phone: '(555) 555-5555', email: 'robert.j@example.com' }
+                    ];
+                }
+                
+                // Add client options to the select
+                clients.forEach(client => {
+                    const option = document.createElement('option');
+                    option.value = client.id;
+                    option.textContent = client.name;
+                    option.setAttribute('data-phone', client.phone);
+                    option.setAttribute('data-email', client.email);
+                    callClientSelect.appendChild(option);
+                });
+                
+                console.log(`Populated client select with ${clients.length} clients`);
+            }
+            
+            // Add text message functionality
+            const sendSmsBtn = document.getElementById('sendSmsBtn');
+            if (sendSmsBtn) {
+                sendSmsBtn.addEventListener('click', function() {
+                    const phoneInput = document.getElementById('activeCallNumber');
+                    const phone = phoneInput ? phoneInput.textContent.trim() : '';
+                    
+                    if (!phone) {
+                        alert('No active call or phone number to send message to');
+                        return;
+                    }
+                    
+                    // Show SMS modal or form
+                    const message = prompt('Enter your text message:', '');
+                    if (message) {
+                        console.log('Sending SMS to', phone, 'Message:', message);
+                        
+                        // In a real implementation, this would call an API to send the SMS
+                        alert(`Message sent to ${phone}:\n${message}`);
+                    }
+                });
+            } else {
+                // Add a send SMS button if it doesn't exist
+                const callActionsDiv = document.querySelector('.row .col-md-12 .d-flex.justify-content-between');
+                if (callActionsDiv) {
+                    const smsButton = document.createElement('button');
+                    smsButton.className = 'btn btn-outline-info';
+                    smsButton.id = 'sendSmsBtn';
+                    smsButton.innerHTML = '<i class="fas fa-sms"></i> Send Text';
+                    smsButton.addEventListener('click', function() {
+                        const phoneInput = document.getElementById('activeCallNumber');
+                        const phone = phoneInput ? phoneInput.textContent.trim() : '';
+                        
+                        if (!phone) {
+                            alert('No active call or phone number to send message to');
+                            return;
+                        }
+                        
+                        // Show SMS modal or form
+                        const message = prompt('Enter your text message:', '');
+                        if (message) {
+                            console.log('Sending SMS to', phone, 'Message:', message);
+                            
+                            // In a real implementation, this would call an API to send the SMS
+                            alert(`Message sent to ${phone}:\n${message}`);
+                        }
+                    });
+                    
+                    callActionsDiv.appendChild(smsButton);
+                }
             }
         });
     </script>

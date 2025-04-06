@@ -272,10 +272,41 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-info" id="textClientModalBtn">
+                        <i class="fas fa-sms"></i> Send Text
+                    </button>
                     <button type="button" class="btn btn-primary" id="editClientBtn">Edit Client</button>
                     <button type="button" class="btn btn-success" id="callClientModalBtn">
                         <i class="fas fa-phone"></i> Call
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Text Message Modal -->
+    <div class="modal fade" id="sendTextModal" tabindex="-1" aria-labelledby="sendTextModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sendTextModalLabel">Send Text Message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="smsForm">
+                        <div class="mb-3">
+                            <label for="smsRecipient" class="form-label">Recipient</label>
+                            <input type="text" class="form-control" id="smsRecipient" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="smsMessage" class="form-label">Message</label>
+                            <textarea class="form-control" id="smsMessage" rows="4" placeholder="Type your message here..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="sendSmsBtn">Send Message</button>
                 </div>
             </div>
         </div>
@@ -364,6 +395,10 @@
             // Initialize modals
             const clientDetailsModal = new bootstrap.Modal(document.getElementById('clientDetailsModal'));
             const addClientModal = new bootstrap.Modal(document.getElementById('addClientModal'));
+            const sendTextModal = new bootstrap.Modal(document.getElementById('sendTextModal'));
+            
+            // Current client being viewed/edited
+            let currentClient = null;
             
             // Add New Client button
             const addNewClientBtn = document.getElementById('addNewClient');
@@ -373,6 +408,124 @@
                     document.getElementById('addClientForm').reset();
                     // Show modal
                     addClientModal.show();
+                });
+            }
+            
+            // Call client from modal button
+            const callClientModalBtn = document.getElementById('callClientModalBtn');
+            if (callClientModalBtn) {
+                callClientModalBtn.addEventListener('click', function() {
+                    if (!currentClient || !currentClient.phone) {
+                        alert('No client phone number available');
+                        return;
+                    }
+                    
+                    const phoneNumber = currentClient.phone;
+                    
+                    console.log('Calling client from modal:', currentClient.name);
+                    console.log('Phone number:', phoneNumber);
+                    
+                    // Close the details modal
+                    clientDetailsModal.hide();
+                    
+                    // Make call using NotaryVoiceAgent if available
+                    if (hasNotaryVoiceAgent) {
+                        console.log('Making call using NotaryVoiceAgent...');
+                        const call = NotaryVoiceAgent.startCall(phoneNumber, {
+                            recording: true,
+                            transcription: true
+                        });
+                        
+                        console.log('Call result:', call);
+                        
+                        if (call) {
+                            // Redirect to calls page
+                            window.location.href = 'calls.html';
+                        } else {
+                            console.error('Failed to start call with NotaryVoiceAgent');
+                            alert('Failed to start call. Please try again.');
+                        }
+                    }
+                    // Fall back to using TwilioIntegration directly
+                    else if (hasTwilioIntegration) {
+                        console.log('Making call using TwilioIntegration directly...');
+                        const call = TwilioIntegration.startCall(phoneNumber, {
+                            recording: true,
+                            transcription: true
+                        });
+                        
+                        console.log('Call result:', call);
+                        
+                        if (call) {
+                            // Redirect to calls page
+                            window.location.href = 'calls.html';
+                        } else {
+                            console.error('Failed to start call with TwilioIntegration');
+                            alert('Failed to start call. Please try again.');
+                        }
+                    } else {
+                        console.log('No call integration available, showing mock alert');
+                        alert('Initiating call to ' + phoneNumber);
+                    }
+                });
+            }
+            
+            // Text client from modal button
+            const textClientModalBtn = document.getElementById('textClientModalBtn');
+            if (textClientModalBtn) {
+                textClientModalBtn.addEventListener('click', function() {
+                    if (!currentClient || !currentClient.phone) {
+                        alert('No client phone number available');
+                        return;
+                    }
+                    
+                    // Close the details modal
+                    clientDetailsModal.hide();
+                    
+                    // Set recipient in SMS modal
+                    document.getElementById('smsRecipient').value = currentClient.phone;
+                    
+                    // Clear previous message
+                    document.getElementById('smsMessage').value = '';
+                    
+                    // Show SMS modal
+                    sendTextModal.show();
+                });
+            }
+            
+            // Send SMS button
+            const sendSmsBtn = document.getElementById('sendSmsBtn');
+            if (sendSmsBtn) {
+                sendSmsBtn.addEventListener('click', function() {
+                    const recipient = document.getElementById('smsRecipient').value.trim();
+                    const message = document.getElementById('smsMessage').value.trim();
+                    
+                    if (!recipient) {
+                        alert('Recipient phone number is required');
+                        return;
+                    }
+                    
+                    if (!message) {
+                        alert('Please enter a message');
+                        return;
+                    }
+                    
+                    console.log('Sending SMS to:', recipient, 'Message:', message);
+                    
+                    // Use TwilioIntegration to send SMS if available
+                    if (hasTwilioIntegration && typeof TwilioIntegration.sendSMS === 'function') {
+                        const result = TwilioIntegration.sendSMS(recipient, message);
+                        if (result) {
+                            alert('Message sent successfully!');
+                            sendTextModal.hide();
+                        } else {
+                            alert('Failed to send message. Please try again.');
+                        }
+                    } else {
+                        // Mock SMS send
+                        alert(`Message sent to ${recipient}:\n${message}`);
+                        sendTextModal.hide();
+                    }
                 });
             }
             
@@ -437,14 +590,17 @@
                         <td>${formattedDate}</td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-outline-primary view-client" data-id="${newClient.id}">
+                                <button type="button" class="btn btn-outline-primary view-client" data-id="${newClient.id}" data-name="${name}" data-email="${email}" data-phone="${phone}" data-address="${address || ''}" data-status="${status}">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary edit-client" data-id="${newClient.id}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button type="button" class="btn btn-outline-success call-client" data-id="${newClient.id}" data-phone="${phone}">
+                                <button type="button" class="btn btn-outline-success call-client" data-id="${newClient.id}" data-phone="${phone}" data-name="${name}">
                                     <i class="fas fa-phone"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-info text-client" data-id="${newClient.id}" data-phone="${phone}" data-name="${name}">
+                                    <i class="fas fa-sms"></i>
                                 </button>
                             </div>
                         </td>
@@ -484,7 +640,40 @@
                 container.querySelectorAll('.view-client').forEach(button => {
                     button.addEventListener('click', function() {
                         const clientId = this.getAttribute('data-id');
+                        const name = this.getAttribute('data-name');
+                        const email = this.getAttribute('data-email');
+                        const phone = this.getAttribute('data-phone');
+                        const address = this.getAttribute('data-address');
+                        const status = this.getAttribute('data-status');
+                        
                         console.log('View client button clicked for ID:', clientId);
+                        
+                        // Set current client
+                        currentClient = {
+                            id: clientId,
+                            name: name,
+                            email: email,
+                            phone: phone,
+                            address: address,
+                            status: status
+                        };
+                        
+                        // Update modal with client data
+                        document.getElementById('modalClientName').textContent = name;
+                        document.getElementById('modalClientEmail').textContent = email;
+                        document.getElementById('modalClientPhone').textContent = phone;
+                        document.getElementById('modalClientAddress').textContent = address || 'Not provided';
+                        
+                        // Update status badge
+                        let statusClass = 'bg-secondary';
+                        if (status === 'active') statusClass = 'bg-success';
+                        if (status === 'pending') statusClass = 'bg-warning text-dark';
+                        if (status === 'inactive') statusClass = 'bg-danger';
+                        
+                        document.getElementById('modalClientStatus').innerHTML = 
+                            `<span class="badge ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+                        
+                        // Show modal
                         clientDetailsModal.show();
                     });
                 });
@@ -494,6 +683,7 @@
                     button.addEventListener('click', function() {
                         const clientId = this.getAttribute('data-id');
                         const phone = this.getAttribute('data-phone');
+                        const name = this.getAttribute('data-name') || 'Client';
                         
                         console.log('Call client button clicked for ID:', clientId);
                         console.log('Phone number:', phone);
@@ -508,7 +698,8 @@
                             console.log('Making call using NotaryVoiceAgent...');
                             const call = NotaryVoiceAgent.startCall(phone, {
                                 recording: true,
-                                transcription: true
+                                transcription: true,
+                                notes: `Call to ${name}`
                             });
                             
                             console.log('Call result:', call);
@@ -526,7 +717,8 @@
                             console.log('Making call using TwilioIntegration directly...');
                             const call = TwilioIntegration.startCall(phone, {
                                 recording: true,
-                                transcription: true
+                                transcription: true,
+                                notes: `Call to ${name}`
                             });
                             
                             console.log('Call result:', call);
@@ -544,10 +736,91 @@
                         }
                     });
                 });
+                
+                // Text client buttons
+                container.querySelectorAll('.text-client').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const clientId = this.getAttribute('data-id');
+                        const phone = this.getAttribute('data-phone');
+                        const name = this.getAttribute('data-name') || 'Client';
+                        
+                        console.log('Text client button clicked for ID:', clientId);
+                        console.log('Phone number:', phone);
+                        
+                        if (!phone) {
+                            alert('No phone number available for this client');
+                            return;
+                        }
+                        
+                        // Set recipient in SMS modal
+                        document.getElementById('smsRecipient').value = phone;
+                        
+                        // Clear previous message
+                        document.getElementById('smsMessage').value = '';
+                        
+                        // Show SMS modal
+                        sendTextModal.show();
+                    });
+                });
             }
             
             // Setup handlers for existing buttons
             setupClientButtonHandlers(document);
+            
+            // Add text message buttons to existing rows if they don't have them
+            document.querySelectorAll('.call-client').forEach(button => {
+                const row = button.closest('tr');
+                if (!row.querySelector('.text-client')) {
+                    const btnGroup = button.closest('.btn-group');
+                    const clientId = button.getAttribute('data-id');
+                    const phone = row.querySelector('td:nth-child(3)').textContent.trim();
+                    const name = row.querySelector('td:nth-child(1)').textContent.trim();
+                    
+                    const textBtn = document.createElement('button');
+                    textBtn.type = 'button';
+                    textBtn.className = 'btn btn-outline-info text-client';
+                    textBtn.setAttribute('data-id', clientId);
+                    textBtn.setAttribute('data-phone', phone);
+                    textBtn.setAttribute('data-name', name);
+                    textBtn.innerHTML = '<i class="fas fa-sms"></i>';
+                    
+                    btnGroup.appendChild(textBtn);
+                    
+                    // Add event listener to the new button
+                    textBtn.addEventListener('click', function() {
+                        if (!phone) {
+                            alert('No phone number available for this client');
+                            return;
+                        }
+                        
+                        // Set recipient in SMS modal
+                        document.getElementById('smsRecipient').value = phone;
+                        
+                        // Clear previous message
+                        document.getElementById('smsMessage').value = '';
+                        
+                        // Show SMS modal
+                        sendTextModal.show();
+                    });
+                }
+            });
+            
+            // Update view client buttons to include all data attributes
+            document.querySelectorAll('.view-client').forEach(button => {
+                const row = button.closest('tr');
+                if (!button.hasAttribute('data-name')) {
+                    const name = row.querySelector('td:nth-child(1)').textContent.trim();
+                    const email = row.querySelector('td:nth-child(2)').textContent.trim();
+                    const phone = row.querySelector('td:nth-child(3)').textContent.trim();
+                    const statusEl = row.querySelector('td:nth-child(4) .badge');
+                    const status = statusEl ? statusEl.textContent.trim().toLowerCase() : 'active';
+                    
+                    button.setAttribute('data-name', name);
+                    button.setAttribute('data-email', email);
+                    button.setAttribute('data-phone', phone);
+                    button.setAttribute('data-status', status);
+                }
+            });
         });
     </script>
 </body>

@@ -9,7 +9,8 @@ const TwilioIntegration = (function() {
         apiEndpoint: '/api/twilio',
         callEndpoint: '/api/twilio/call',
         recordingEndpoint: '/api/twilio/recording',
-        transcriptionEndpoint: '/api/twilio/transcription'
+        transcriptionEndpoint: '/api/twilio/transcription',
+        smsEndpoint: '/api/twilio/sms'
     };
 
     // Private variables
@@ -42,7 +43,8 @@ const TwilioIntegration = (function() {
             startTime: new Date(),
             status: 'in-progress',
             recording: params.recording !== false,
-            transcription: params.transcription !== false
+            transcription: params.transcription !== false,
+            notes: params.notes || ''
         };
         
         // Start call timer
@@ -68,7 +70,8 @@ const TwilioIntegration = (function() {
             from: options.from || 'Your Notary Number',
             recording: options.recording !== false,
             transcription: options.transcription !== false,
-            callbackUrl: options.callbackUrl || config.apiEndpoint + '/status'
+            callbackUrl: options.callbackUrl || config.apiEndpoint + '/status',
+            notes: options.notes || ''
         };
         
         const device = initTwilioDevice();
@@ -80,6 +83,38 @@ const TwilioIntegration = (function() {
             console.error('Twilio Device is not ready.');
             return false;
         }
+    }
+    
+    // Send an SMS
+    function sendSMS(to, message, options = {}) {
+        console.log('Sending SMS to:', to, 'Message:', message);
+        
+        if (!to || !message) {
+            console.error('Phone number and message are required to send SMS');
+            return false;
+        }
+        
+        // In a real implementation, this would make an API call to send the SMS
+        // For demo purposes, we'll simulate a successful send
+        
+        const smsId = 'sms-' + Math.floor(Math.random() * 1000000);
+        
+        const sms = {
+            id: smsId,
+            to: to,
+            from: options.from || 'Your Notary Number',
+            body: message,
+            sentTime: new Date(),
+            status: 'sent'
+        };
+        
+        // Store SMS in history
+        saveSmsToHistory(sms);
+        
+        // Notify listeners
+        notifyCallListeners('smsSent', sms);
+        
+        return sms;
     }
     
     // End the current active call
@@ -114,6 +149,33 @@ const TwilioIntegration = (function() {
         callDuration = 0;
         
         return completedCall;
+    }
+    
+    // Save SMS to history
+    function saveSmsToHistory(sms) {
+        // In a real implementation, this would send the SMS data to the backend
+        // for storage in a database
+        
+        // For demo purposes, we'll store it in localStorage
+        try {
+            const smsHistory = JSON.parse(localStorage.getItem('smsHistory') || '[]');
+            smsHistory.push(sms);
+            localStorage.setItem('smsHistory', JSON.stringify(smsHistory));
+            
+            console.log('SMS saved to history:', sms);
+        } catch (error) {
+            console.error('Error saving SMS to history:', error);
+        }
+    }
+    
+    // Get SMS history
+    function getSmsHistory() {
+        try {
+            return JSON.parse(localStorage.getItem('smsHistory') || '[]');
+        } catch (error) {
+            console.error('Error getting SMS history:', error);
+            return [];
+        }
     }
     
     // Start the call timer
@@ -274,6 +336,8 @@ const TwilioIntegration = (function() {
         init: initTwilioDevice,
         startCall,
         endCall,
+        sendSMS,
+        getSmsHistory,
         hasActiveCall: () => activeCall !== null,
         getActiveCall: () => activeCall ? {...activeCall} : null,
         getCallHistory,
