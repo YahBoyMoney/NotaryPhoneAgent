@@ -34,8 +34,19 @@ const TwilioIntegration = (function() {
     
     // Format phone number to E.164 format
     function formatPhoneNumber(phoneNumber) {
+        if (!phoneNumber) {
+            console.error('No phone number provided to format');
+            return null;
+        }
+        
         // Strip out all non-numeric characters
         let digits = phoneNumber.replace(/\D/g, '');
+        
+        // Handle empty string after removing non-digits
+        if (digits.length === 0) {
+            console.error('Phone number contains no digits');
+            return null;
+        }
         
         // If US/Canada number without country code, add +1
         if (digits.length === 10) {
@@ -63,12 +74,19 @@ const TwilioIntegration = (function() {
             
             if (!params.to) {
                 console.error('No phone number provided');
+                notifyCallListeners('error', { message: 'Failed to make call: No phone number provided' });
                 return false;
             }
             
             // Format the phone number
             const formattedNumber = formatPhoneNumber(params.to);
             console.log('Formatted phone number:', formattedNumber);
+            
+            if (!formattedNumber) {
+                console.error('Invalid phone number format');
+                notifyCallListeners('error', { message: 'Failed to make call: Invalid phone number format' });
+                return false;
+            }
             
             activeCall = {
                 id: 'call-' + Math.floor(Math.random() * 1000000),
@@ -90,6 +108,7 @@ const TwilioIntegration = (function() {
             return activeCall;
         } catch (error) {
             console.error('Error connecting call:', error);
+            notifyCallListeners('error', { message: 'Failed to make call: ' + error.message });
             return false;
         }
     }
@@ -101,16 +120,26 @@ const TwilioIntegration = (function() {
         try {
             if (!phoneNumber) {
                 console.error('No phone number provided');
+                notifyCallListeners('error', { message: 'Failed to make call: No phone number provided' });
                 return false;
             }
             
             if (activeCall) {
                 console.warn('There is already an active call. Please end it before starting a new one.');
+                notifyCallListeners('error', { message: 'There is already an active call. Please end it before starting a new one.' });
+                return false;
+            }
+            
+            // Format the phone number before using it
+            const formattedNumber = formatPhoneNumber(phoneNumber);
+            if (!formattedNumber) {
+                console.error('Invalid phone number format');
+                notifyCallListeners('error', { message: 'Failed to make call: Invalid phone number format' });
                 return false;
             }
             
             const params = {
-                to: phoneNumber,
+                to: formattedNumber,
                 from: options.from || 'Your Notary Number',
                 recording: options.recording !== false,
                 transcription: options.transcription !== false,
@@ -125,10 +154,12 @@ const TwilioIntegration = (function() {
                 return device.connect(params);
             } else {
                 console.error('Twilio Device is not ready.');
+                notifyCallListeners('error', { message: 'Twilio Device is not ready.' });
                 return false;
             }
         } catch (error) {
             console.error('Error starting call:', error);
+            notifyCallListeners('error', { message: 'Failed to make call: ' + error.message });
             return false;
         }
     }
@@ -139,6 +170,7 @@ const TwilioIntegration = (function() {
         
         if (!to || !message) {
             console.error('Phone number and message are required to send SMS');
+            notifyCallListeners('error', { message: 'Failed to send SMS: Phone number and message are required' });
             return false;
         }
         
@@ -146,6 +178,12 @@ const TwilioIntegration = (function() {
             // Format the phone number
             const formattedNumber = formatPhoneNumber(to);
             console.log('Formatted SMS phone number:', formattedNumber);
+            
+            if (!formattedNumber) {
+                console.error('Invalid phone number format for SMS');
+                notifyCallListeners('error', { message: 'Failed to send SMS: Invalid phone number format' });
+                return false;
+            }
             
             // In a real implementation, this would make an API call to send the SMS
             // For demo purposes, we'll simulate a successful send
@@ -170,6 +208,7 @@ const TwilioIntegration = (function() {
             return sms;
         } catch (error) {
             console.error('Error sending SMS:', error);
+            notifyCallListeners('error', { message: 'Failed to send SMS: ' + error.message });
             return false;
         }
     }
