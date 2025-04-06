@@ -1,7 +1,6 @@
 [build]
   publish = "public"
-  # For a static site with no build, we can use a simple command
-  command = "echo 'No build step required'"
+  command = ""
   
 # Disable Python and Ruby detection
 [build.environment]
