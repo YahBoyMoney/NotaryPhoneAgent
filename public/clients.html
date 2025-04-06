@@ -288,6 +288,10 @@
     <!-- Custom JS -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
+    <!-- Integration scripts -->
+    <script src="js/integrations/twilio.js"></script>
+    <script src="js/integrations/elevenlabs.js"></script>
+    <script src="js/integrations/notary-agent.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize client details modal
@@ -305,7 +309,23 @@
             document.querySelectorAll('.call-client').forEach(button => {
                 button.addEventListener('click', function() {
                     const clientId = this.getAttribute('data-id');
-                    alert('Initiating call to client #' + clientId);
+                    
+                    if (window.NotaryVoiceAgent) {
+                        // Find client info
+                        const clientRow = this.closest('tr');
+                        const phone = clientRow.querySelector('td:nth-child(3)').textContent;
+                        
+                        // Start call with NotaryVoiceAgent
+                        NotaryVoiceAgent.startCall(phone, {
+                            recording: true,
+                            transcription: true
+                        });
+                        
+                        // Redirect to calls page
+                        window.location.href = 'calls.html';
+                    } else {
+                        alert('Initiating call to client #' + clientId);
+                    }
                 });
             });
         });
