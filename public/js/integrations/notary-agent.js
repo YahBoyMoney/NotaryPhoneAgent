@@ -7,318 +7,300 @@ const NotaryVoiceAgent = (function() {
     // Configuration
     const config = {
         apiEndpoint: '/api/notary-agent',
-        transcriptionEndpoint: '/api/notary-agent/transcription',
-        summaryEndpoint: '/api/notary-agent/summary'
+        voiceEndpoint: '/api/voice',
+        transcriptEndpoint: '/api/transcript',
+        appointmentEndpoint: '/api/appointments'
     };
 
     // Private variables
     let isInitialized = false;
-    let listeners = [];
-    
-    // Transcript and summary data
-    let currentCallTranscript = [];
-    let currentCallSummary = null;
-    let callTags = [];
+    let activeCall = null;
+    let agentListeners = [];
+    let transcriptItems = [];
     
     // Initialize the agent
     function init() {
-        if (isInitialized) return;
+        console.log('Initializing NotaryVoiceAgent...');
         
-        // Set up listeners for Twilio events
-        if (window.TwilioIntegration) {
-            TwilioIntegration.addCallListener(handleTwilioEvent);
+        try {
+            // Check if dependencies are available
+            if (typeof TwilioIntegration === 'undefined') {
+                console.error('TwilioIntegration is not available');
+                return false;
+            }
+            
+            if (typeof ElevenLabsIntegration === 'undefined') {
+                console.warn('ElevenLabsIntegration is not available, voice features will be limited');
+            }
+            
+            // Initialize Twilio
+            TwilioIntegration.init();
+            
+            // Initialize ElevenLabs if available
+            if (typeof ElevenLabsIntegration !== 'undefined') {
+                ElevenLabsIntegration.init();
+            }
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            isInitialized = true;
+            console.log('NotaryVoiceAgent initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing NotaryVoiceAgent:', error);
+            return false;
+        }
+    }
+    
+    // Set up event listeners for Twilio and ElevenLabs events
+    function setupEventListeners() {
+        // Add Twilio call listener
+        TwilioIntegration.addCallListener((event, data) => {
+            console.log('Twilio event:', event, data);
+            
+            switch (event) {
+                case 'connected':
+                    handleCallConnected(data);
+                    break;
+                case 'disconnected':
+                    handleCallDisconnected(data);
+                    break;
+                case 'summary':
+                    handleCallSummary(data);
+                    break;
+                case 'transcription':
+                    handleTranscription(data);
+                    break;
+            }
+            
+            // Propagate event to agent listeners
+            notifyAgentListeners('twilio', { event, data });
+        });
+        
+        // Add ElevenLabs listener if available
+        if (typeof ElevenLabsIntegration !== 'undefined') {
+            ElevenLabsIntegration.addListener((event, data) => {
+                console.log('ElevenLabs event:', event, data);
+                
+                // Propagate event to agent listeners
+                notifyAgentListeners('elevenlabs', { event, data });
+            });
+        }
+    }
+    
+    // Handle call connected event
+    function handleCallConnected(call) {
+        activeCall = call;
+        
+        // Add to transcript
+        addToTranscript('system', 'Call connected');
+        
+        // Greet the client if ElevenLabs is available
+        if (typeof ElevenLabsIntegration !== 'undefined') {
+            setTimeout(() => {
+                const greeting = "Hello, this is the Notary Voice Agent. How can I assist you with notary services today?";
+                ElevenLabsIntegration.speak(greeting);
+                addToTranscript('agent', greeting);
+            }, 1000);
+        }
+    }
+    
+    // Handle call disconnected event
+    function handleCallDisconnected(call) {
+        // Add to transcript
+        addToTranscript('system', 'Call disconnected');
+        
+        // Clear active call
+        activeCall = null;
+    }
+    
+    // Handle call summary event
+    function handleCallSummary(summary) {
+        console.log('Call summary received:', summary);
+        
+        // Update UI with summary if needed
+        const summaryElement = document.getElementById('callSummary');
+        if (summaryElement) {
+            summaryElement.textContent = summary.summary;
+        }
+    }
+    
+    // Handle transcription event
+    function handleTranscription(transcription) {
+        console.log('Transcription received:', transcription);
+        
+        // Add to transcript
+        if (transcription.speaker === 'client') {
+            addToTranscript('client', transcription.text);
+            
+            // Process client input if ElevenLabs is available
+            if (typeof ElevenLabsIntegration !== 'undefined') {
+                processClientInput(transcription.text);
+            }
         } else {
-            console.error('Twilio integration not found');
-        }
-        
-        // Set up listeners for ElevenLabs events
-        if (window.ElevenLabsIntegration) {
-            ElevenLabsIntegration.addEventListener(handleElevenLabsEvent);
-        } else {
-            console.error('ElevenLabs integration not found');
-        }
-        
-        isInitialized = true;
-        notifyListeners('initialized', {});
-        
-        return isInitialized;
-    }
-    
-    // Handle Twilio events
-    function handleTwilioEvent(event, data) {
-        console.log(`Twilio event: ${event}`, data);
-        
-        switch (event) {
-            case 'connected':
-                // Call started
-                resetCallData();
-                notifyListeners('callStarted', data);
-                
-                // Start with a greeting
-                if (window.ElevenLabsIntegration) {
-                    setTimeout(() => {
-                        const greeting = `Hello, this is your notary voice assistant. How can I help you today?`;
-                        ElevenLabsIntegration.textToSpeech(greeting);
-                        addToTranscript('agent', greeting);
-                    }, 1000);
-                }
-                break;
-                
-            case 'disconnected':
-                // Call ended
-                notifyListeners('callEnded', data);
-                break;
-                
-            case 'summary':
-                // Call summary received
-                currentCallSummary = data;
-                callTags = data.tags || [];
-                notifyListeners('callSummaryReceived', data);
-                break;
+            addToTranscript('agent', transcription.text);
         }
     }
     
-    // Handle ElevenLabs events
-    function handleElevenLabsEvent(event, data) {
-        console.log(`ElevenLabs event: ${event}`, data);
-        
-        switch (event) {
-            case 'speechStart':
-                notifyListeners('agentSpeaking', data);
-                break;
-                
-            case 'speechEnd':
-                notifyListeners('agentFinishedSpeaking', data);
-                break;
-                
-            case 'responseGenerated':
-                // Add the AI response to the transcript
-                addToTranscript('agent', data.response);
-                notifyListeners('responseGenerated', data);
-                break;
-        }
-    }
-    
-    // Reset call data
-    function resetCallData() {
-        currentCallTranscript = [];
-        currentCallSummary = null;
-        callTags = [];
-    }
-    
-    // Add entry to transcript
+    // Add item to transcript
     function addToTranscript(speaker, text) {
-        const entry = {
+        const timestamp = new Date();
+        
+        const transcriptItem = {
             id: Date.now(),
             speaker,
             text,
-            timestamp: new Date()
+            timestamp
         };
         
-        currentCallTranscript.push(entry);
-        notifyListeners('transcriptUpdated', { entry, transcript: currentCallTranscript });
+        transcriptItems.push(transcriptItem);
         
-        return entry;
+        // Update UI with transcript item
+        updateTranscriptDisplay(transcriptItem);
+        
+        return transcriptItem;
     }
     
-    // Process user input
-    function processUserInput(text) {
-        // Add to transcript
-        addToTranscript('client', text);
+    // Update transcript display in UI
+    function updateTranscriptDisplay(item) {
+        const transcriptElement = document.getElementById('liveTranscription');
+        if (!transcriptElement) return;
         
-        // Process with ElevenLabs
-        if (window.ElevenLabsIntegration) {
-            return ElevenLabsIntegration.generateAndSpeakResponse(text, { 
-                transcriptContext: currentCallTranscript
-            });
+        const speakerLabel = item.speaker === 'agent' ? 'Agent' : 
+                            item.speaker === 'client' ? 'Client' : 'System';
+        
+        const newElement = document.createElement('p');
+        newElement.innerHTML = `<strong>${speakerLabel}:</strong> ${item.text}`;
+        
+        // Add CSS class based on speaker
+        newElement.classList.add(`transcript-${item.speaker}`);
+        
+        transcriptElement.appendChild(newElement);
+        
+        // Scroll to bottom
+        transcriptElement.scrollTop = transcriptElement.scrollHeight;
+    }
+    
+    // Process client input and generate response
+    function processClientInput(text) {
+        console.log('Processing client input:', text);
+        
+        // For demo purposes, we'll use simple keyword matching
+        // In a real implementation, this would use NLP or AI to understand intent
+        
+        const lowerText = text.toLowerCase();
+        let response = '';
+        
+        if (lowerText.includes('appointment') || lowerText.includes('schedule')) {
+            response = "I'd be happy to help you schedule an appointment. What date and time works best for you?";
+        } else if (lowerText.includes('document') || lowerText.includes('notarize')) {
+            response = "For notarizing documents, you'll need to bring a valid government-issued ID and the unsigned documents. What type of document do you need notarized?";
+        } else if (lowerText.includes('cost') || lowerText.includes('fee') || lowerText.includes('price')) {
+            response = "Our standard notary fee is $15 per signature. If you need mobile notary services, there's an additional travel fee based on your location.";
+        } else if (lowerText.includes('location') || lowerText.includes('address') || lowerText.includes('office')) {
+            response = "Our main office is located at 123 Notary Street, Suite 101, in downtown. We also offer mobile notary services where we can come to your location.";
+        } else if (lowerText.includes('id') || lowerText.includes('identification')) {
+            response = "You'll need a valid government-issued photo ID such as a driver's license, passport, or state ID card. The name on your ID must match the name on the documents.";
+        } else if (lowerText.includes('thank')) {
+            response = "You're welcome! Is there anything else I can help you with today?";
+        } else if (lowerText.includes('goodbye') || lowerText.includes('bye')) {
+            response = "Thank you for contacting our notary service. Have a great day!";
         } else {
-            console.error('ElevenLabs integration not found');
-            return Promise.resolve(null);
+            response = "I'm here to help with your notary needs. I can provide information about our services, scheduling appointments, document requirements, or fees. What would you like to know?";
         }
+        
+        // Speak the response
+        setTimeout(() => {
+            ElevenLabsIntegration.speak(response);
+            addToTranscript('agent', response);
+        }, 1000);
     }
     
     // Start a call
     function startCall(phoneNumber, options = {}) {
-        if (window.TwilioIntegration) {
-            return TwilioIntegration.startCall(phoneNumber, options);
-        } else {
-            console.error('Twilio integration not found');
-            return null;
-        }
-    }
-    
-    // End the current call
-    function endCall() {
-        if (window.TwilioIntegration) {
-            return TwilioIntegration.endCall();
-        } else {
-            console.error('Twilio integration not found');
-            return null;
-        }
-    }
-    
-    // Get current call transcript
-    function getTranscript() {
-        return [...currentCallTranscript];
-    }
-    
-    // Get current call summary
-    function getSummary() {
-        return currentCallSummary;
-    }
-    
-    // Get call tags
-    function getTags() {
-        return [...callTags];
-    }
-    
-    // Add a tag
-    function addTag(tag) {
-        if (tag && !callTags.includes(tag)) {
-            callTags.push(tag);
-            notifyListeners('tagsUpdated', { tags: callTags });
-            return true;
-        }
-        return false;
-    }
-    
-    // Remove a tag
-    function removeTag(tag) {
-        const index = callTags.indexOf(tag);
-        if (index !== -1) {
-            callTags.splice(index, 1);
-            notifyListeners('tagsUpdated', { tags: callTags });
-            return true;
-        }
-        return false;
-    }
-    
-    // Generate an AI summary of the call
-    function generateSummary() {
-        if (currentCallTranscript.length === 0) {
-            console.warn('No transcript available to generate summary');
-            return Promise.resolve(null);
+        console.log('NotaryVoiceAgent.startCall called with:', phoneNumber, options);
+        
+        if (!isInitialized) {
+            console.error('NotaryVoiceAgent is not initialized');
+            return false;
         }
         
-        // In a real implementation, this would call the backend API
-        // For demo, we'll generate a mock summary
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const transcriptText = currentCallTranscript
-                    .map(entry => `${entry.speaker.toUpperCase()}: ${entry.text}`)
-                    .join('\n');
-                
-                console.log('Generating summary for transcript:', transcriptText);
-                
-                // Extract topics based on keywords in the transcript
-                const topics = [];
-                const keywordMap = {
-                    'document': 'Document Verification',
-                    'appointment': 'Appointment Scheduling',
-                    'schedule': 'Appointment Scheduling',
-                    'notarize': 'Notarization Services',
-                    'notary': 'Notarization Services',
-                    'sign': 'Document Signing',
-                    'signature': 'Document Signing',
-                    'id': 'Identity Verification',
-                    'identification': 'Identity Verification',
-                    'fee': 'Pricing Discussion',
-                    'cost': 'Pricing Discussion',
-                    'price': 'Pricing Discussion'
-                };
-                
-                // Find topics based on keywords
-                Object.keys(keywordMap).forEach(keyword => {
-                    if (transcriptText.toLowerCase().includes(keyword) && !topics.includes(keywordMap[keyword])) {
-                        topics.push(keywordMap[keyword]);
-                    }
-                });
-                
-                // Generate tags from topics
-                const tags = topics.map(topic => topic.toLowerCase().replace(' ', '-'));
-                
-                // Add default topics if none found
-                if (topics.length === 0) {
-                    topics.push('General Inquiry');
-                    tags.push('general-inquiry');
-                }
-                
-                // Generate a summary based on transcript length
-                let summary = '';
-                if (currentCallTranscript.length <= 3) {
-                    summary = 'Brief call with client discussing notary services.';
-                } else {
-                    summary = `Call with client discussing ${topics.join(', ')}. `;
-                    
-                    // Add details based on topics
-                    if (topics.includes('Appointment Scheduling')) {
-                        summary += 'Client inquired about scheduling a notary appointment. ';
-                    }
-                    
-                    if (topics.includes('Document Verification') || topics.includes('Notarization Services')) {
-                        summary += 'Discussed document requirements and notarization process. ';
-                    }
-                    
-                    if (topics.includes('Pricing Discussion')) {
-                        summary += 'Provided information about notary service fees. ';
-                    }
-                    
-                    // Add closing
-                    summary += 'Client was provided with all requested information.';
-                }
-                
-                // Create summary object
-                currentCallSummary = {
-                    id: `summary-${Date.now()}`,
-                    date: new Date(),
-                    duration: currentCallTranscript.length > 0 ? 
-                        Math.floor((Date.now() - currentCallTranscript[0].timestamp) / 1000) : 0,
-                    topics,
-                    summary,
-                    tags,
-                    nextSteps: ['Follow up with client', 'Send confirmation email']
-                };
-                
-                // Update tags
-                callTags = [...tags];
-                
-                // Notify listeners
-                notifyListeners('summaryGenerated', currentCallSummary);
-                
-                resolve(currentCallSummary);
-            }, 1500);
-        });
+        // Use Twilio to make the call
+        const call = TwilioIntegration.startCall(phoneNumber, options);
+        
+        if (call) {
+            activeCall = call;
+            console.log('Call started successfully:', call);
+            return call;
+        } else {
+            console.error('Failed to start call');
+            return false;
+        }
     }
     
-    // Add event listener
-    function addEventListener(listener) {
+    // End the current active call
+    function endCall() {
+        if (!activeCall) {
+            console.warn('No active call to end');
+            return false;
+        }
+        
+        // Use Twilio to end the call
+        const result = TwilioIntegration.endCall();
+        
+        if (result) {
+            activeCall = null;
+            return result;
+        } else {
+            return false;
+        }
+    }
+    
+    // Send a message
+    function sendMessage(phoneNumber, message, options = {}) {
+        if (!isInitialized) {
+            console.error('NotaryVoiceAgent is not initialized');
+            return false;
+        }
+        
+        return TwilioIntegration.sendSMS(phoneNumber, message, options);
+    }
+    
+    // Get active call information
+    function getActiveCall() {
+        return activeCall;
+    }
+    
+    // Get transcript items
+    function getTranscript() {
+        return [...transcriptItems];
+    }
+    
+    // Add agent event listener
+    function addListener(listener) {
         if (typeof listener === 'function') {
-            listeners.push(listener);
+            agentListeners.push(listener);
         }
     }
     
-    // Remove event listener
-    function removeEventListener(listener) {
-        const index = listeners.indexOf(listener);
+    // Remove agent event listener
+    function removeListener(listener) {
+        const index = agentListeners.indexOf(listener);
         if (index !== -1) {
-            listeners.splice(index, 1);
+            agentListeners.splice(index, 1);
         }
     }
     
-    // Notify all listeners of an event
-    function notifyListeners(event, data) {
-        listeners.forEach(listener => {
+    // Notify all agent listeners of an event
+    function notifyAgentListeners(source, data) {
+        agentListeners.forEach(listener => {
             try {
-                listener(event, data);
+                listener(source, data);
             } catch (error) {
-                console.error('Error in event listener:', error);
+                console.error('Error in agent listener:', error);
             }
         });
-    }
-    
-    // Check if agent is initialized
-    function isAgentInitialized() {
-        return isInitialized;
     }
     
     // Public API
@@ -326,32 +308,15 @@ const NotaryVoiceAgent = (function() {
         init,
         startCall,
         endCall,
-        processUserInput,
+        sendMessage,
+        getActiveCall,
         getTranscript,
-        getSummary,
-        getTags,
-        addTag,
-        removeTag,
-        generateSummary,
-        addEventListener,
-        removeEventListener,
-        isInitialized: isAgentInitialized
+        addListener,
+        removeListener
     };
 })();
-
-// Initialize on script load
-if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', function() {
-        // Delay initialization to ensure other scripts are loaded
-        setTimeout(function() {
-            if (NotaryVoiceAgent && !NotaryVoiceAgent.isInitialized()) {
-                NotaryVoiceAgent.init();
-            }
-        }, 500);
-    });
-}
 
 // Export for ES modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = NotaryVoiceAgent;
-} 
+}

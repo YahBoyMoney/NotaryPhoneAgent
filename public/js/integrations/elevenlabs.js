@@ -1,44 +1,243 @@
 /**
  * ElevenLabs Integration for Notary Voice Agent
- * Handles voice AI functionality and integration with ElevenLabs services
+ * Handles Text-to-Speech functionality and integration with ElevenLabs API
  */
 
 const ElevenLabsIntegration = (function() {
     // Configuration
     const config = {
         apiEndpoint: '/api/elevenlabs',
-        ttsEndpoint: '/api/elevenlabs/tts',
-        voiceEndpoint: '/api/elevenlabs/voice'
+        voiceId: 'rachel', // Default voice ID
+        modelId: 'eleven_monolingual_v1',
+        stability: 0.5,
+        similarityBoost: 0.75
     };
 
     // Private variables
-    let selectedVoice = 'agent-default';
-    let audioContext = null;
+    let isInitialized = false;
+    let isSpeaking = false;
     let audioQueue = [];
-    let isPlaying = false;
-    let isPaused = false;
+    let audioElement = null;
+    let currentAudio = null;
     let listeners = [];
     
-    // Available voices
+    // Voice options
     const voices = [
-        { id: 'agent-default', name: 'Professional Agent (Default)', gender: 'female' },
-        { id: 'agent-male', name: 'Professional Male Agent', gender: 'male' },
-        { id: 'agent-friendly', name: 'Friendly Agent', gender: 'female' },
-        { id: 'agent-formal', name: 'Formal Agent', gender: 'male' }
+        { id: 'rachel', name: 'Rachel', description: 'Professional female voice' },
+        { id: 'dave', name: 'Dave', description: 'Professional male voice' },
+        { id: 'sarah', name: 'Sarah', description: 'Friendly female voice' },
+        { id: 'michael', name: 'Michael', description: 'Friendly male voice' }
     ];
     
-    // Initialize audio context
-    function initAudioContext() {
-        if (!audioContext) {
-            try {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioContext = new AudioContext();
-                console.log('Audio context initialized');
-            } catch (error) {
-                console.error('Error initializing audio context:', error);
+    // Initialize the integration
+    function init() {
+        console.log('Initializing ElevenLabsIntegration...');
+        
+        try {
+            // Create audio element if it doesn't exist
+            if (!audioElement) {
+                audioElement = document.createElement('audio');
+                audioElement.setAttribute('id', 'elevenlabs-audio');
+                audioElement.style.display = 'none';
+                document.body.appendChild(audioElement);
+                
+                // Add event listeners
+                audioElement.addEventListener('ended', handleAudioEnded);
+                audioElement.addEventListener('error', handleAudioError);
+                audioElement.addEventListener('play', () => {
+                    isSpeaking = true;
+                    notifyListeners('speechStart', { audio: currentAudio });
+                });
+                audioElement.addEventListener('pause', () => {
+                    isSpeaking = false;
+                    notifyListeners('speechPause', { audio: currentAudio });
+                });
             }
+            
+            isInitialized = true;
+            console.log('ElevenLabsIntegration initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing ElevenLabsIntegration:', error);
+            return false;
         }
-        return audioContext;
+    }
+    
+    // Handle audio ended event
+    function handleAudioEnded() {
+        console.log('Audio playback ended');
+        
+        isSpeaking = false;
+        notifyListeners('speechEnd', { audio: currentAudio });
+        
+        // Play next audio in queue if any
+        if (audioQueue.length > 0) {
+            playNextAudio();
+        } else {
+            currentAudio = null;
+        }
+    }
+    
+    // Handle audio error event
+    function handleAudioError(error) {
+        console.error('Audio playback error:', error);
+        
+        isSpeaking = false;
+        notifyListeners('speechError', { error, audio: currentAudio });
+        
+        // Try to play next audio in queue
+        if (audioQueue.length > 0) {
+            playNextAudio();
+        } else {
+            currentAudio = null;
+        }
+    }
+    
+    // Play next audio in queue
+    function playNextAudio() {
+        if (audioQueue.length === 0 || !audioElement) return;
+        
+        currentAudio = audioQueue.shift();
+        
+        // Set audio source
+        if (currentAudio.url) {
+            // Play from URL
+            audioElement.src = currentAudio.url;
+        } else if (currentAudio.blob) {
+            // Play from Blob
+            audioElement.src = URL.createObjectURL(currentAudio.blob);
+        } else {
+            console.error('Invalid audio source');
+            handleAudioError({ message: 'Invalid audio source' });
+            return;
+        }
+        
+        // Play audio
+        const playPromise = audioElement.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.error('Error playing audio:', error);
+                handleAudioError(error);
+            });
+        }
+    }
+    
+    // Convert text to speech
+    function textToSpeech(text, options = {}) {
+        if (!isInitialized) {
+            console.error('ElevenLabsIntegration is not initialized');
+            return Promise.reject(new Error('Not initialized'));
+        }
+        
+        console.log('Converting text to speech:', text);
+        
+        // In a real implementation, this would call the ElevenLabs API
+        // For demo purposes, we'll simulate the API call
+        
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                try {
+                    // Create a mock audio object
+                    const audioId = `audio-${Date.now()}`;
+                    const mockUrl = `mock-audio-url-${audioId}`;
+                    
+                    const audio = {
+                        id: audioId,
+                        text: text,
+                        voiceId: options.voiceId || config.voiceId,
+                        url: mockUrl,
+                        blob: null, // In a real implementation, this would be the audio blob
+                        timestamp: new Date()
+                    };
+                    
+                    console.log('Text to speech conversion successful:', audio);
+                    
+                    notifyListeners('textToSpeechComplete', { audio });
+                    
+                    resolve(audio);
+                } catch (error) {
+                    console.error('Error in text to speech conversion:', error);
+                    reject(error);
+                }
+            }, 300); // Simulate API delay
+        });
+    }
+    
+    // Speak the given text (convert to speech and play)
+    function speak(text, options = {}) {
+        if (!text) return Promise.resolve(null);
+        
+        return textToSpeech(text, options)
+            .then(audio => {
+                // For demo purposes, we'll simulate audio playback
+                // In a real implementation, this would play the actual audio
+                
+                // Create a mock blob for demo
+                const mockBlob = new Blob(['mock audio data'], { type: 'audio/mpeg' });
+                audio.blob = mockBlob;
+                
+                // Add to queue
+                audioQueue.push(audio);
+                
+                // Start playback if not already speaking
+                if (!isSpeaking) {
+                    playNextAudio();
+                }
+                
+                return audio;
+            })
+            .catch(error => {
+                console.error('Error in speak function:', error);
+                return null;
+            });
+    }
+    
+    // Stop speaking
+    function stopSpeaking() {
+        if (!audioElement) return;
+        
+        try {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            
+            isSpeaking = false;
+            audioQueue = [];
+            currentAudio = null;
+            
+            notifyListeners('speechStopped', {});
+            
+            return true;
+        } catch (error) {
+            console.error('Error stopping speech:', error);
+            return false;
+        }
+    }
+    
+    // Pause speaking
+    function pauseSpeaking() {
+        if (!audioElement || !isSpeaking) return false;
+        
+        try {
+            audioElement.pause();
+            return true;
+        } catch (error) {
+            console.error('Error pausing speech:', error);
+            return false;
+        }
+    }
+    
+    // Resume speaking
+    function resumeSpeaking() {
+        if (!audioElement || isSpeaking) return false;
+        
+        try {
+            audioElement.play();
+            return true;
+        } catch (error) {
+            console.error('Error resuming speech:', error);
+            return false;
+        }
     }
     
     // Get available voices
@@ -46,225 +245,80 @@ const ElevenLabsIntegration = (function() {
         return [...voices];
     }
     
-    // Set the voice to use
+    // Set voice by ID
     function setVoice(voiceId) {
-        const voice = voices.find(v => v.id === voiceId);
-        if (voice) {
-            selectedVoice = voiceId;
-            notifyListeners('voiceChanged', { voiceId, voice });
+        if (voices.some(voice => voice.id === voiceId)) {
+            config.voiceId = voiceId;
             return true;
         }
         return false;
     }
     
-    // Get current voice
-    function getCurrentVoice() {
-        return voices.find(v => v.id === selectedVoice);
-    }
-    
-    // Text to speech - mock implementation for demo
-    function textToSpeech(text, options = {}) {
-        console.log(`Converting text to speech: "${text}" using voice: ${options.voiceId || selectedVoice}`);
+    // Generate and speak an AI response to user input
+    function generateResponse(userInput, options = {}) {
+        console.log('Generating response for user input:', userInput);
         
-        // In a real implementation, this would make a call to the ElevenLabs API
-        // For demo purposes, we'll use the browser's built-in speech synthesis
+        // In a real implementation, this would call an AI model to generate a response
+        // For demo purposes, we'll use a simple response generator
         
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Map voice to browser voice as best as possible
-        const voiceId = options.voiceId || selectedVoice;
-        const voice = voices.find(v => v.id === voiceId);
-        
-        if (voice) {
-            // Try to find a matching browser voice
-            const synVoices = window.speechSynthesis.getVoices();
-            const preferredLang = 'en-US';
-            
-            // Choose a voice based on gender
-            let selectedSynVoice = synVoices.find(v => 
-                v.lang.startsWith('en') && 
-                ((voice.gender === 'female' && v.name.includes('Female')) || 
-                 (voice.gender === 'male' && v.name.includes('Male')))
-            );
-            
-            // Fallback to any English voice
-            if (!selectedSynVoice) {
-                selectedSynVoice = synVoices.find(v => v.lang === preferredLang) || 
-                                   synVoices.find(v => v.lang.startsWith('en')) ||
-                                   synVoices[0];
-            }
-            
-            if (selectedSynVoice) {
-                utterance.voice = selectedSynVoice;
-            }
-        }
-        
-        // Set other properties
-        utterance.rate = options.rate || 1;
-        utterance.pitch = options.pitch || 1;
-        utterance.volume = options.volume !== undefined ? options.volume : 1;
-        
-        // Events
-        utterance.onstart = () => {
-            isPlaying = true;
-            notifyListeners('speechStart', { text });
-        };
-        
-        utterance.onend = () => {
-            isPlaying = false;
-            notifyListeners('speechEnd', { text });
-            
-            // Process next in queue if exists
-            if (audioQueue.length > 0 && !isPaused) {
-                const next = audioQueue.shift();
-                textToSpeech(next.text, next.options);
-            }
-        };
-        
-        utterance.onerror = (error) => {
-            console.error('Speech synthesis error:', error);
-            isPlaying = false;
-            notifyListeners('speechError', { text, error });
-        };
-        
-        // Start speaking or add to queue
-        if (!isPlaying && !isPaused) {
-            window.speechSynthesis.speak(utterance);
-        } else {
-            audioQueue.push({ text, options });
-        }
-        
-        return {
-            id: `speech-${Date.now()}`,
-            text,
-            status: isPlaying ? 'playing' : 'queued'
-        };
-    }
-    
-    // Generate AI response
-    function generateResponse(input, context = {}) {
-        console.log(`Generating AI response for: "${input}"`);
-        
-        // In a real implementation, this would make a call to the backend
-        // which would use ElevenLabs or another AI service to generate a response
-        
-        // Mock implementation for demo
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             setTimeout(() => {
-                // Mock responses based on keywords in the input
-                let response = '';
-                
-                if (input.toLowerCase().includes('hello') || input.toLowerCase().includes('hi')) {
-                    response = "Hello! I'm your notary voice assistant. How can I help you today?";
-                } else if (input.toLowerCase().includes('appointment') || input.toLowerCase().includes('schedule')) {
-                    response = "I'd be happy to help you schedule an appointment. What date and time works best for you?";
-                } else if (input.toLowerCase().includes('document') || input.toLowerCase().includes('papers')) {
-                    response = "For your notary session, you'll need to bring the original documents, valid government-issued photo ID, and any other signers who need to be present.";
-                } else if (input.toLowerCase().includes('cost') || input.toLowerCase().includes('fee') || input.toLowerCase().includes('price')) {
-                    response = "Our standard notary fee is $15 per signature. If you need mobile notary services, there's an additional travel fee based on your location.";
-                } else if (input.toLowerCase().includes('thank')) {
-                    response = "You're welcome! Is there anything else I can help you with today?";
-                } else {
-                    response = "I understand you're looking for notary services. Could you provide more specific details about what you need?";
+                try {
+                    const response = generateMockResponse(userInput);
+                    
+                    notifyListeners('responseGenerated', { 
+                        userInput, 
+                        response,
+                        options
+                    });
+                    
+                    resolve(response);
+                } catch (error) {
+                    console.error('Error generating response:', error);
+                    reject(error);
                 }
-                
-                const result = {
-                    id: `response-${Date.now()}`,
-                    input,
-                    response,
-                    context
-                };
-                
-                notifyListeners('responseGenerated', result);
-                
-                resolve(result);
-            }, 1000); // Simulate API delay
+            }, 500); // Simulate AI response delay
         });
     }
     
-    // Generate and speak response
-    function generateAndSpeakResponse(input, context = {}) {
-        return generateResponse(input, context)
-            .then(result => {
-                // Speak the response
-                textToSpeech(result.response);
-                return result;
+    // Generate a mock response based on keywords in the user input
+    function generateMockResponse(input) {
+        const lowerInput = input.toLowerCase();
+        
+        if (lowerInput.includes('appointment') || lowerInput.includes('schedule')) {
+            return "I'd be happy to help you schedule an appointment. What date and time works best for you?";
+        } else if (lowerInput.includes('document') || lowerInput.includes('notarize')) {
+            return "For notarizing documents, you'll need a valid government-issued ID and the unsigned documents. What type of document do you need notarized?";
+        } else if (lowerInput.includes('cost') || lowerInput.includes('fee') || lowerInput.includes('price')) {
+            return "Our standard notary fee is $15 per signature. If you need mobile notary services, there's an additional travel fee based on your location.";
+        } else if (lowerInput.includes('location') || lowerInput.includes('address')) {
+            return "Our main office is located at 123 Notary Street, Suite 101, in downtown. We also offer mobile notary services where we can come to your location.";
+        } else if (lowerInput.includes('thank')) {
+            return "You're welcome! Is there anything else I can help you with today?";
+        } else if (lowerInput.includes('bye') || lowerInput.includes('goodbye')) {
+            return "Thank you for contacting our notary service. Have a great day!";
+        } else {
+            return "I'm here to help with your notary needs. I can provide information about our services, scheduling appointments, document requirements, or fees. What would you like to know?";
+        }
+    }
+    
+    // Generate response and speak it
+    function generateAndSpeakResponse(userInput, options = {}) {
+        return generateResponse(userInput, options)
+            .then(response => {
+                return speak(response, options);
             });
     }
     
-    // Pause playback
-    function pause() {
-        if (isPlaying && !isPaused) {
-            window.speechSynthesis.pause();
-            isPaused = true;
-            notifyListeners('paused', {});
-            return true;
-        }
-        return false;
-    }
-    
-    // Resume playback
-    function resume() {
-        if (isPaused) {
-            window.speechSynthesis.resume();
-            isPaused = false;
-            notifyListeners('resumed', {});
-            return true;
-        }
-        return false;
-    }
-    
-    // Stop playback and clear queue
-    function stop() {
-        window.speechSynthesis.cancel();
-        audioQueue = [];
-        isPlaying = false;
-        isPaused = false;
-        notifyListeners('stopped', {});
-        return true;
-    }
-    
-    // Create a spoken dialog for a notary session
-    function createNotarySessionDialog(sessionDetails = {}) {
-        const greeting = `Hello ${sessionDetails.clientName || 'there'}, I'm your virtual notary assistant. I'll be guiding you through this notary session today.`;
-        
-        const instructions = `Before we begin, I need to verify your identity. Please hold your government-issued ID up to the camera.`;
-        
-        const confirmation = `Thank you. Now, I'll need you to confirm that you're signing this document voluntarily and that you understand its contents.`;
-        
-        const completion = `Great! We've completed all the necessary notarizations. You'll receive an email confirmation with the details and next steps. Is there anything else you need assistance with?`;
-        
-        return [greeting, instructions, confirmation, completion];
-    }
-    
-    // Play a notary session dialog
-    function playNotarySessionDialog(sessionDetails = {}) {
-        const dialogSteps = createNotarySessionDialog(sessionDetails);
-        
-        // Clear any existing queue
-        stop();
-        
-        // Add all steps to the queue
-        dialogSteps.forEach(text => {
-            audioQueue.push({ text, options: {} });
-        });
-        
-        // Start playing
-        if (audioQueue.length > 0) {
-            const first = audioQueue.shift();
-            textToSpeech(first.text, first.options);
-        }
-    }
-    
     // Add event listener
-    function addEventListener(listener) {
+    function addListener(listener) {
         if (typeof listener === 'function') {
             listeners.push(listener);
         }
     }
     
     // Remove event listener
-    function removeEventListener(listener) {
+    function removeListener(listener) {
         const index = listeners.indexOf(listener);
         if (index !== -1) {
             listeners.splice(index, 1);
@@ -282,39 +336,20 @@ const ElevenLabsIntegration = (function() {
         });
     }
     
-    // Initialize
-    function init() {
-        initAudioContext();
-        
-        // Load speech synthesis voices when available
-        if (window.speechSynthesis) {
-            if (window.speechSynthesis.getVoices().length === 0) {
-                window.speechSynthesis.onvoiceschanged = () => {
-                    console.log('Speech synthesis voices loaded');
-                };
-            }
-        }
-    }
-    
-    // Initialize on script load
-    if (typeof window !== 'undefined') {
-        window.addEventListener('DOMContentLoaded', init);
-    }
-    
     // Public API
     return {
+        init,
+        textToSpeech,
+        speak,
+        stopSpeaking,
+        pauseSpeaking,
+        resumeSpeaking,
         getVoices,
         setVoice,
-        getCurrentVoice,
-        textToSpeech,
         generateResponse,
         generateAndSpeakResponse,
-        pause,
-        resume,
-        stop,
-        playNotarySessionDialog,
-        addEventListener,
-        removeEventListener
+        addListener,
+        removeListener
     };
 })();
 
