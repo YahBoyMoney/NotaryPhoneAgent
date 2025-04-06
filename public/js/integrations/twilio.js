@@ -26,6 +26,7 @@ const TwilioIntegration = (function() {
     let callHistory = [];
     let smsHistory = [];
     let debugMode = true; // Set to true for detailed logging
+    let isMockMode = true; // Default to mock mode until we confirm real Twilio connection
     
     // Load call and SMS history from local storage
     function loadHistories() {
@@ -71,6 +72,7 @@ const TwilioIntegration = (function() {
         
         if (isMockToken) {
             console.log('Received mock token, using mock implementation');
+            isMockMode = true;
             useMockImplementation();
             return;
         }
@@ -84,6 +86,7 @@ const TwilioIntegration = (function() {
             });
             
             // Fall back to mock implementation for development
+            isMockMode = true;
             useMockImplementation();
             return;
         }
@@ -109,6 +112,7 @@ const TwilioIntegration = (function() {
             
             notifyListeners('deviceReady', { device: twilioDevice });
             isInitialized = true;
+            isMockMode = false;
             
             console.log('Twilio device initialized successfully');
         } catch (error) {
@@ -120,6 +124,7 @@ const TwilioIntegration = (function() {
             });
             
             // Fall back to mock implementation for development
+            isMockMode = true;
             useMockImplementation();
         }
     }
@@ -303,6 +308,7 @@ const TwilioIntegration = (function() {
                 
                 // Fall back to mock implementation
                 console.log('Falling back to mock implementation due to token error');
+                isMockMode = true;
                 useMockImplementation();
                 return { mock: true, error: error.message };
             });
@@ -371,6 +377,7 @@ const TwilioIntegration = (function() {
     function useMockImplementation() {
         console.log('Using mock Twilio implementation');
         isInitialized = { mock: true };
+        isMockMode = true;
         notifyListeners('deviceReady', { mock: true });
     }
     
@@ -400,6 +407,11 @@ const TwilioIntegration = (function() {
         
         const mockCallSid = 'MC' + Date.now() + Math.random().toString(36).substring(2, 8);
         console.log(`Creating mock call with SID ${mockCallSid} to ${formattedNumber}`);
+        
+        // Create a popup or UI indication that this is a mock call
+        if (typeof window !== 'undefined') {
+            console.warn('MOCK CALL: This is a simulated call and will not ring actual phones');
+        }
         
         const mockConnection = {
             parameters: {
@@ -462,7 +474,8 @@ const TwilioIntegration = (function() {
                 direction: mockConnection.parameters.Direction,
                 from: mockConnection.parameters.From,
                 to: mockConnection.parameters.To,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                mock: true // Explicitly mark as mock
             });
             startCallDurationTimer();
         }, 1000);
@@ -474,6 +487,11 @@ const TwilioIntegration = (function() {
     function notifyListeners(event, data = {}) {
         if (debugMode) {
             console.log(`[Event: ${event}]`, data);
+        }
+        
+        // Add mock flag if we're in mock mode
+        if (isMockMode && !data.mock) {
+            data.mock = true;
         }
         
         listeners.forEach(listener => {
@@ -492,6 +510,11 @@ const TwilioIntegration = (function() {
             timestamp: new Date().toISOString(),
             ...callData
         };
+        
+        // Add mock flag if appropriate
+        if (isMockMode && !call.mock) {
+            call.mock = true;
+        }
         
         console.log('Adding call to history:', call);
         callHistory.unshift(call);
@@ -516,6 +539,11 @@ const TwilioIntegration = (function() {
             timestamp: new Date().toISOString(),
             ...smsData
         };
+        
+        // Add mock flag if appropriate
+        if (isMockMode && !sms.mock) {
+            sms.mock = true;
+        }
         
         console.log('Adding SMS to history:', sms);
         smsHistory.unshift(sms);
@@ -550,7 +578,14 @@ const TwilioIntegration = (function() {
             loadHistories();
             
             // Get access token and initialize device
-            return getAccessToken();
+            return getAccessToken()
+                .catch(error => {
+                    console.error('Failed to initialize Twilio:', error);
+                    // Ensure we have a mockable fallback even on critical errors
+                    isMockMode = true;
+                    useMockImplementation();
+                    return { mock: true, error: error.message };
+                });
         },
         
         // Register a listener for Twilio events
@@ -603,71 +638,42 @@ const TwilioIntegration = (function() {
                 status: 'initiating',
                 notes: options.notes || '',
                 recording: options.recording !== false,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                mock: isMockMode // Mark as mock if we're in mock mode
             };
             
             const call = addCallToHistory(callData);
             
-            // If Twilio device is not available or we're using the mock implementation
-            if (!twilioDevice || isInitialized.mock) {
-                console.log('Making call via Netlify Function:', config.callEndpoint);
+            // If mock mode or Twilio device not available, use mock implementation
+            if (isMockMode || !twilioDevice || isInitialized.mock) {
+                console.log('Making mock call to:', formattedNumber);
                 
-                return fetch(config.callEndpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        to: formattedNumber,
-                        from: options.from || null,
-                        recording: options.recording !== false,
-                        callbackUrl: options.callbackUrl || config.statusEndpoint
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to initiate call: ${response.status} ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Call initiated successfully:', data);
-                    
-                    // Update call record with SID
-                    if (callHistory.length > 0) {
-                        callHistory[0].callSid = data.sid;
-                        callHistory[0].status = data.status || 'queued';
-                        saveHistories();
-                    }
-                    
-                    // Create a mock connection object to simulate the UI experience
-                    const mockConnection = mockConnectCall({ To: formattedNumber });
-                    
-                    return mockConnection;
-                })
-                .catch(error => {
-                    console.error('Error making call via Netlify Function:', error);
-                    
-                    // Update call record with error
-                    if (callHistory.length > 0) {
-                        callHistory[0].status = 'failed';
-                        callHistory[0].error = error.message;
-                        callHistory[0].endTime = new Date().toISOString();
-                        saveHistories();
-                    }
-                    
-                    notifyListeners('error', { 
-                        message: 'Failed to make call: ' + error.message,
-                        code: 'CALL_FAILED',
-                        details: error 
+                // Attempt to use the Netlify Function if available, but just for logging
+                try {
+                    fetch(config.callEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            to: formattedNumber,
+                            from: options.from || null,
+                            recording: options.recording !== false,
+                            callbackUrl: options.callbackUrl || config.statusEndpoint
+                        })
+                    }).then(response => {
+                        // We don't need to do anything with this response in mock mode
+                        console.log('Mock call logged to Netlify function');
+                    }).catch(err => {
+                        console.log('Could not log mock call to Netlify function:', err);
                     });
-                    
-                    // Fall back to complete mock as last resort
-                    console.log('Falling back to mock call implementation');
-                    const mockConnection = mockConnectCall({ To: formattedNumber });
-                    
-                    return mockConnection;
-                });
+                } catch (e) {
+                    console.log('Error logging mock call to Netlify function:', e);
+                }
+                
+                // Always use mock implementation in mock mode
+                const mockConnection = mockConnectCall({ To: formattedNumber });
+                return mockConnection;
             }
             
             // If Twilio device is available, use it to make the call
@@ -706,9 +712,10 @@ const TwilioIntegration = (function() {
                     details: error 
                 });
                 
-                // Try using the Netlify function as a fallback
-                console.log('Falling back to Netlify Function for making call');
-                return this.startCall(phoneNumber, options);
+                // Fall back to mock implementation
+                console.log('Falling back to mock call implementation after error');
+                isMockMode = true;
+                return mockConnectCall({ To: formattedNumber });
             }
         },
         
@@ -752,6 +759,27 @@ const TwilioIntegration = (function() {
             }
             
             return false;
+        },
+        
+        // Check if there's an active call
+        hasActiveCall: function() {
+            return !!activeConnection;
+        },
+        
+        // Get information about the active call
+        getActiveCall: function() {
+            if (!activeConnection) return null;
+            
+            return {
+                status: 'in-progress',
+                duration: callDuration,
+                direction: activeConnection.parameters.Direction,
+                from: activeConnection.parameters.From,
+                to: activeConnection.parameters.To,
+                callSid: activeConnection.parameters.CallSid,
+                timestamp: new Date().toISOString(),
+                mock: isMockMode // Indicate if this is a mock call
+            };
         },
         
         // Answer an incoming call
@@ -888,7 +916,8 @@ const TwilioIntegration = (function() {
             if (!activeConnection) {
                 return {
                     status: 'idle',
-                    duration: 0
+                    duration: 0,
+                    mock: isMockMode
                 };
             }
             
@@ -899,7 +928,8 @@ const TwilioIntegration = (function() {
                 from: activeConnection.parameters.From,
                 to: activeConnection.parameters.To,
                 callSid: activeConnection.parameters.CallSid,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                mock: isMockMode
             };
         },
         
@@ -946,10 +976,37 @@ const TwilioIntegration = (function() {
                 to: formattedNumber,
                 message: message,
                 status: 'sending',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                mock: isMockMode
             };
             
             const sms = addSmsToHistory(smsData);
+            
+            // If in mock mode, just simulate success after a delay
+            if (isMockMode) {
+                console.log('Using mock SMS implementation');
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // Update SMS history with mock status
+                        if (smsHistory.length > 0) {
+                            smsHistory[0].status = 'sent';
+                            smsHistory[0].mock = true;
+                            smsHistory[0].sentTime = new Date().toISOString();
+                            saveHistories();
+                        }
+                        
+                        notifyListeners('smsSent', {
+                            to: formattedNumber,
+                            message: message,
+                            status: 'sent',
+                            mock: true,
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        resolve(sms);
+                    }, 1000);
+                });
+            }
             
             // Send the request to the Netlify function
             return fetch(config.smsEndpoint, {
@@ -1008,8 +1065,9 @@ const TwilioIntegration = (function() {
                     details: error 
                 });
                 
-                // Try mock implementation as fallback
-                console.log('Falling back to mock SMS implementation');
+                // Fall back to mock implementation
+                console.log('Falling back to mock SMS implementation after error');
+                isMockMode = true;
                 return new Promise((resolve) => {
                     setTimeout(() => {
                         // Update SMS history with mock status
@@ -1047,6 +1105,11 @@ const TwilioIntegration = (function() {
         // Check if the device is ready
         isReady: function() {
             return isInitialized;
+        },
+        
+        // Check if we're in mock mode
+        isMockMode: function() {
+            return isMockMode;
         },
         
         // Format a phone number to E.164 format (public API)

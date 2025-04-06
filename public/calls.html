@@ -76,6 +76,12 @@
                     </div>
                 </div>
 
+                <!-- Add a visible mock mode banner at the top of the page -->
+                <div id="mockModeBanner" class="alert alert-warning alert-dismissible fade show text-center mb-0" role="alert">
+                    <strong>Mock Mode Active!</strong> Calls are simulated and will not connect to real phones. This is for demonstration purposes only.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
                 <!-- Active Call Section -->
                 <div class="row mb-4">
                     <div class="col-12">
@@ -227,6 +233,9 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="mockModeAlert" class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i> This system is currently in mock mode. Calls will be simulated but will not connect to actual phone numbers.
+                    </div>
                     <form id="callForm">
                         <div class="mb-3">
                             <label for="callClientSelect" class="form-label">Select Client</label>
@@ -575,6 +584,22 @@
                     
                     callActionsDiv.appendChild(smsButton);
                 }
+            }
+
+            // Check if we're in mock mode and show appropriate UI
+            if (typeof TwilioIntegration !== 'undefined') {
+                // Initialize Twilio with callback to check mock status
+                TwilioIntegration.init().then(() => {
+                    if (TwilioIntegration.isMockMode && TwilioIntegration.isMockMode()) {
+                        // We're in mock mode, show the appropriate indicators
+                        document.getElementById('mockModeBanner').style.display = 'block';
+                        document.getElementById('mockModeAlert').style.display = 'block';
+                    } else {
+                        // We're in real mode, hide the mock indicators
+                        document.getElementById('mockModeBanner').style.display = 'none';
+                        document.getElementById('mockModeAlert').style.display = 'none';
+                    }
+                });
             }
         });
     </script>

@@ -355,11 +355,27 @@
                     notes: notes
                 };
                 
-                // Start the call using Notary Voice Agent
-                NotaryVoiceAgent.startCall(phoneNumber, options);
-                
-                // Close the modal
-                $('#callModal').modal('hide');
+                try {
+                    // Start the call using Notary Voice Agent
+                    const callResult = NotaryVoiceAgent.startCall(phoneNumber, options);
+                    
+                    if (callResult) {
+                        console.log('Call initiated successfully');
+                        // Close the modal
+                        $('#callModal').modal('hide');
+                        
+                        // Display calling status message
+                        alert('Call initiated. Note: This is using a mock implementation and will not ring real phones unless connected to a real Twilio account.');
+                    } else {
+                        console.error('Failed to initiate call');
+                        alert('Failed to initiate call. Please check the phone number and try again.');
+                    }
+                } catch (error) {
+                    console.error('Error initiating call:', error);
+                    alert('Error initiating call: ' + (error.message || 'Unknown error'));
+                    // Ensure modal closes even on error
+                    $('#callModal').modal('hide');
+                }
             });
             
             $('#sendSMSBtn').on('click', function() {
@@ -393,6 +409,8 @@
                         $('#phoneNumber').val(client.phone);
                     }
                 }
+                // Enable manual editing of the phone number field
+                $('#phoneNumber').prop('readonly', false);
             });
             
             $('#messageClientSelect').on('change', function() {
@@ -404,6 +422,13 @@
                         $('#messagePhoneNumber').val(client.phone);
                     }
                 }
+                // Enable manual editing of the phone number field
+                $('#messagePhoneNumber').prop('readonly', false);
+            });
+            
+            // Ensure phone number inputs are always editable
+            $('#phoneNumber, #messagePhoneNumber').on('focus', function() {
+                $(this).prop('readonly', false);
             });
             
             // Load sample clients function
@@ -486,12 +511,15 @@
                     
                     case 'connected':
                         console.log('Call connected:', data);
-                        // You might want to redirect to calls.html
-                        // window.location.href = 'calls.html';
+                        // Display a clearer message that this is a mock call
+                        if (data.mock) {
+                            alert('MOCK CALL ACTIVE: This is a simulated call and will not ring actual phones.');
+                        }
                         break;
                     
                     case 'disconnected':
                         console.log('Call disconnected:', data);
+                        alert('Call ended');
                         break;
                     
                     case 'error':
