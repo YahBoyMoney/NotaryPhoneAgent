@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "description": "Notary Voice Agent Dashboard",
   "scripts": {
-    "build": "echo 'No build step required'"
+    "start": "echo 'Starting static server' && serve public",
+    "build": "echo 'No build step required, using static files in public directory'"
   },
-  "dependencies": {},
+  "dependencies": {
+    "serve": "^14.2.1",
+    "twilio": "^4.19.0",
+    "twilio-client": "^1.15.0",
+    "eleven-labs": "^1.0.0"
+  },
   "devDependencies": {}
 } 
