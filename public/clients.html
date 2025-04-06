@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Management - Notary Voice Agent</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar d-md-block" id="sidebar">
+                <div class="text-center text-white mb-4">
+                    <h4>Notary Voice</h4>
+                    <p>Agent Dashboard</p>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="clients.html">
+                            <i class="fas fa-users"></i> Clients
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="calls.html">
+                            <i class="fas fa-phone-alt"></i> Call Management
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="messages.html">
+                            <i class="fas fa-comment"></i> Messages
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="recordings.html">
+                            <i class="fas fa-microphone"></i> Recordings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="analytics.html">
+                            <i class="fas fa-chart-bar"></i> Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="settings.html">
+                            <i class="fas fa-cog"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Main Content -->
+            <main class="col-md-9 col-lg-10 ms-sm-auto main-content">
+                <!-- Top Navigation -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Client Management</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button class="navbar-toggler d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshClientsData">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" id="addNewClient">
+                                <i class="fas fa-user-plus"></i> Add New Client
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clients Search and Filter -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" placeholder="Search clients..." id="clientSearchInput">
+                                            <button class="btn btn-outline-secondary" type="button" id="clientSearchBtn">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="clientStatusFilter">
+                                            <option value="all">All Statuses</option>
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                            <option value="pending">Pending</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="clientSortBy">
+                                            <option value="name_asc">Name (A-Z)</option>
+                                            <option value="name_desc">Name (Z-A)</option>
+                                            <option value="date_asc">Date Added (Oldest)</option>
+                                            <option value="date_desc">Date Added (Newest)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clients List -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-users"></i> Clients
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="clientsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
+                                                <th>Status</th>
+                                                <th>Last Contact</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Sample data -->
+                                            <tr>
+                                                <td>John Smith</td>
+                                                <td>john.smith@example.com</td>
+                                                <td>(555) 123-4567</td>
+                                                <td><span class="badge bg-success">Active</span></td>
+                                                <td>Apr 1, 2023</td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary view-client" data-id="1">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary edit-client" data-id="1">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-success call-client" data-id="1">
+                                                            <i class="fas fa-phone"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Jane Doe</td>
+                                                <td>jane.doe@example.com</td>
+                                                <td>(555) 987-6543</td>
+                                                <td><span class="badge bg-success">Active</span></td>
+                                                <td>Mar 28, 2023</td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary view-client" data-id="2">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary edit-client" data-id="2">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-success call-client" data-id="2">
+                                                            <i class="fas fa-phone"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Robert Johnson</td>
+                                                <td>robert.j@example.com</td>
+                                                <td>(555) 555-5555</td>
+                                                <td><span class="badge bg-warning text-dark">Pending</span></td>
+                                                <td>Apr 3, 2023</td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary view-client" data-id="3">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary edit-client" data-id="3">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-success call-client" data-id="3">
+                                                            <i class="fas fa-phone"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Pagination -->
+                                <nav aria-label="Clients pagination" class="mt-4">
+                                    <ul class="pagination justify-content-center">
+                                        <li class="page-item disabled">
+                                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                                        </li>
+                                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="#">Next</a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Client Details Modal -->
+    <div class="modal fade" id="clientDetailsModal" tabindex="-1" aria-labelledby="clientDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clientDetailsModalLabel">Client Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <div style="width: 100px; height: 100px; background-color: #eee; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-user fa-3x text-muted"></i>
+                            </div>
+                            <h4 class="mt-3" id="modalClientName">John Smith</h4>
+                            <p class="text-muted" id="modalClientStatus"><span class="badge bg-success">Active</span></p>
+                        </div>
+                        <div class="col-md-8">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">
+                                    <div class="row">
+                                        <div class="col-4 text-muted">Email:</div>
+                                        <div class="col-8" id="modalClientEmail">john.smith@example.com</div>
+                                    </div>
+                                </li>
+                                <li class="list-group-item">
+                                    <div class="row">
+                                        <div class="col-4 text-muted">Phone:</div>
+                                        <div class="col-8" id="modalClientPhone">(555) 123-4567</div>
+                                    </div>
+                                </li>
+                                <li class="list-group-item">
+                                    <div class="row">
+                                        <div class="col-4 text-muted">Address:</div>
+                                        <div class="col-8" id="modalClientAddress">123 Main St, Anytown, USA</div>
+                                    </div>
+                                </li>
+                                <li class="list-group-item">
+                                    <div class="row">
+                                        <div class="col-4 text-muted">Client Since:</div>
+                                        <div class="col-8" id="modalClientSince">January 15, 2023</div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="editClientBtn">Edit Client</button>
+                    <button type="button" class="btn btn-success" id="callClientModalBtn">
+                        <i class="fas fa-phone"></i> Call
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom JS -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize client details modal
+            const clientDetailsModal = new bootstrap.Modal(document.getElementById('clientDetailsModal'));
+            
+            // View client buttons
+            document.querySelectorAll('.view-client').forEach(button => {
+                button.addEventListener('click', function() {
+                    const clientId = this.getAttribute('data-id');
+                    clientDetailsModal.show();
+                });
+            });
+            
+            // Call client buttons
+            document.querySelectorAll('.call-client').forEach(button => {
+                button.addEventListener('click', function() {
+                    const clientId = this.getAttribute('data-id');
+                    alert('Initiating call to client #' + clientId);
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
