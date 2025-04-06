@@ -1,15 +1,28 @@
 {
   "name": "notary-voice-agent",
   "version": "1.0.0",
-  "description": "Notary Voice Agent Dashboard",
+  "description": "Notary Voice Agent with Twilio Integration",
+  "main": "index.js",
   "scripts": {
-    "start": "echo 'Starting static server' && serve public",
-    "build": "echo 'No build step required, using static files in public directory'"
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
-    "serve": "^14.2.1",
-    "twilio": "^4.19.0",
-    "twilio-client": "^1.15.0"
+    "twilio": "^4.10.0"
   },
-  "devDependencies": {}
-} 
+  "devDependencies": {
+    "netlify-cli": "^15.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YahBoyMoney/NotaryPhoneAgent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/YahBoyMoney/NotaryPhoneAgent/issues"
+  },
+  "homepage": "https://github.com/YahBoyMoney/NotaryPhoneAgent#readme"
+}
