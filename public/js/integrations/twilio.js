@@ -56,6 +56,8 @@ const TwilioIntegration = (function() {
     
     // Start a call to a client
     function startCall(phoneNumber, options = {}) {
+        console.log('TwilioIntegration.startCall called with:', phoneNumber, options);
+        
         if (activeCall) {
             console.warn('There is already an active call. Please end it before starting a new one.');
             return false;
@@ -72,6 +74,7 @@ const TwilioIntegration = (function() {
         const device = initTwilioDevice();
         
         if (device.ready) {
+            console.log('Twilio device ready, connecting call...');
             return device.connect(params);
         } else {
             console.error('Twilio Device is not ready.');
@@ -268,10 +271,11 @@ const TwilioIntegration = (function() {
     
     // Public API
     return {
+        init: initTwilioDevice,
         startCall,
         endCall,
-        hasActiveCall,
-        getActiveCall,
+        hasActiveCall: () => activeCall !== null,
+        getActiveCall: () => activeCall ? {...activeCall} : null,
         getCallHistory,
         getCallSummary,
         addCallListener,

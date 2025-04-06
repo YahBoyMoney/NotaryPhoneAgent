@@ -335,5 +335,131 @@
     <script src="js/integrations/notary-agent.js"></script>
     <!-- Call page script -->
     <script src="js/calls.js"></script>
+
+    <script>
+        // Initialize integrations on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Calls page loaded, initializing integrations...');
+            
+            // Check if integrations are available
+            console.log('TwilioIntegration available:', typeof TwilioIntegration !== 'undefined');
+            console.log('ElevenLabsIntegration available:', typeof ElevenLabsIntegration !== 'undefined');
+            console.log('NotaryVoiceAgent available:', typeof NotaryVoiceAgent !== 'undefined');
+            
+            // Initialize NotaryVoiceAgent if available
+            if (typeof NotaryVoiceAgent !== 'undefined') {
+                console.log('Initializing NotaryVoiceAgent...');
+                NotaryVoiceAgent.init();
+                console.log('NotaryVoiceAgent initialized');
+            }
+            
+            // Add custom event listener for Make Call button
+            const newCallBtn = document.getElementById('newCallBtn');
+            if (newCallBtn) {
+                console.log('Adding event listener to newCallBtn');
+                newCallBtn.addEventListener('click', function() {
+                    console.log('New Call button clicked');
+                    const makeCallModal = new bootstrap.Modal(document.getElementById('makeCallModal'));
+                    makeCallModal.show();
+                });
+            }
+            
+            // Add custom event listener for Start Call button
+            const startCallBtn = document.getElementById('startCallBtn');
+            if (startCallBtn) {
+                console.log('Adding event listener to startCallBtn');
+                startCallBtn.addEventListener('click', function() {
+                    console.log('Start Call button clicked');
+                    const phoneNumber = document.getElementById('callPhone').value;
+                    console.log('Phone number:', phoneNumber);
+                    
+                    if (!phoneNumber) {
+                        alert('Please enter a phone number');
+                        return;
+                    }
+                    
+                    const options = {
+                        recording: document.getElementById('newCallRecordingSwitch').checked
+                    };
+                    
+                    console.log('Call options:', options);
+                    
+                    // Try to make the call using NotaryVoiceAgent
+                    if (typeof NotaryVoiceAgent !== 'undefined') {
+                        console.log('Making call using NotaryVoiceAgent');
+                        const call = NotaryVoiceAgent.startCall(phoneNumber, options);
+                        console.log('Call result:', call);
+                        
+                        if (call) {
+                            makeCallModal.hide();
+                            updateCallDisplay(call);
+                        } else {
+                            console.error('Failed to make call using NotaryVoiceAgent');
+                            alert('Failed to make call. Please try again.');
+                        }
+                    } 
+                    // Fallback to using TwilioIntegration directly
+                    else if (typeof TwilioIntegration !== 'undefined') {
+                        console.log('Making call using TwilioIntegration directly');
+                        const call = TwilioIntegration.startCall(phoneNumber, options);
+                        console.log('Call result:', call);
+                        
+                        if (call) {
+                            makeCallModal.hide();
+                            updateCallDisplay(call);
+                        } else {
+                            console.error('Failed to make call using TwilioIntegration');
+                            alert('Failed to make call. Please try again.');
+                        }
+                    } else {
+                        console.error('No call integration available');
+                        alert('Call functionality is not available');
+                    }
+                });
+            }
+            
+            // Function to update the call display
+            function updateCallDisplay(call) {
+                const activeCallCard = document.getElementById('activeCallCard');
+                const noActiveCallCard = document.getElementById('noActiveCallCard');
+                
+                if (call) {
+                    // Show active call card
+                    if (activeCallCard) activeCallCard.style.display = 'block';
+                    if (noActiveCallCard) noActiveCallCard.style.display = 'none';
+                    
+                    // Update call info
+                    const activeCallName = document.getElementById('activeCallName');
+                    const activeCallNumber = document.getElementById('activeCallNumber');
+                    
+                    if (activeCallName) activeCallName.textContent = 'Active Call';
+                    if (activeCallNumber) activeCallNumber.textContent = call.to;
+                } else {
+                    // Show no active call card
+                    if (activeCallCard) activeCallCard.style.display = 'none';
+                    if (noActiveCallCard) noActiveCallCard.style.display = 'block';
+                }
+            }
+            
+            // Add hangup button functionality
+            const hangupBtn = document.getElementById('hangupBtn');
+            if (hangupBtn) {
+                console.log('Adding event listener to hangupBtn');
+                hangupBtn.addEventListener('click', function() {
+                    console.log('Hangup button clicked');
+                    
+                    if (typeof NotaryVoiceAgent !== 'undefined') {
+                        console.log('Ending call using NotaryVoiceAgent');
+                        NotaryVoiceAgent.endCall();
+                    } else if (typeof TwilioIntegration !== 'undefined') {
+                        console.log('Ending call using TwilioIntegration directly');
+                        TwilioIntegration.endCall();
+                    }
+                    
+                    updateCallDisplay(null);
+                });
+            }
+        });
+    </script>
 </body>
 </html> 

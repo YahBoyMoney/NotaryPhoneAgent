@@ -342,6 +342,25 @@
     <script src="js/integrations/notary-agent.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize modules
+            console.log('Clients page loaded, initializing integrations...');
+            
+            // Check if integrations are available
+            const hasTwilioIntegration = typeof TwilioIntegration !== 'undefined';
+            const hasElevenLabsIntegration = typeof ElevenLabsIntegration !== 'undefined';
+            const hasNotaryVoiceAgent = typeof NotaryVoiceAgent !== 'undefined';
+            
+            console.log('TwilioIntegration available:', hasTwilioIntegration);
+            console.log('ElevenLabsIntegration available:', hasElevenLabsIntegration);
+            console.log('NotaryVoiceAgent available:', hasNotaryVoiceAgent);
+            
+            // Initialize NotaryVoiceAgent if available
+            if (hasNotaryVoiceAgent) {
+                console.log('Initializing NotaryVoiceAgent...');
+                NotaryVoiceAgent.init();
+                console.log('NotaryVoiceAgent initialized');
+            }
+
             // Initialize modals
             const clientDetailsModal = new bootstrap.Modal(document.getElementById('clientDetailsModal'));
             const addClientModal = new bootstrap.Modal(document.getElementById('addClientModal'));
@@ -424,7 +443,7 @@
                                 <button type="button" class="btn btn-outline-secondary edit-client" data-id="${newClient.id}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button type="button" class="btn btn-outline-success call-client" data-id="${newClient.id}">
+                                <button type="button" class="btn btn-outline-success call-client" data-id="${newClient.id}" data-phone="${phone}">
                                     <i class="fas fa-phone"></i>
                                 </button>
                             </div>
@@ -449,21 +468,7 @@
                     }
                     
                     // Add event listeners to the new buttons
-                    newRow.querySelector('.view-client').addEventListener('click', function() {
-                        clientDetailsModal.show();
-                    });
-                    
-                    newRow.querySelector('.call-client').addEventListener('click', function() {
-                        if (window.NotaryVoiceAgent) {
-                            NotaryVoiceAgent.startCall(phone, {
-                                recording: true,
-                                transcription: true
-                            });
-                            window.location.href = 'calls.html';
-                        } else {
-                            alert('Initiating call to client #' + newClient.id);
-                        }
-                    });
+                    setupClientButtonHandlers(newRow);
                     
                     // Show success message
                     alert('Client added successfully!');
@@ -473,37 +478,76 @@
                 });
             }
             
-            // View client buttons
-            document.querySelectorAll('.view-client').forEach(button => {
-                button.addEventListener('click', function() {
-                    const clientId = this.getAttribute('data-id');
-                    clientDetailsModal.show();
+            // Function to handle client button clicks
+            function setupClientButtonHandlers(container) {
+                // View client buttons
+                container.querySelectorAll('.view-client').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const clientId = this.getAttribute('data-id');
+                        console.log('View client button clicked for ID:', clientId);
+                        clientDetailsModal.show();
+                    });
                 });
-            });
+                
+                // Call client buttons
+                container.querySelectorAll('.call-client').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const clientId = this.getAttribute('data-id');
+                        const phone = this.getAttribute('data-phone');
+                        
+                        console.log('Call client button clicked for ID:', clientId);
+                        console.log('Phone number:', phone);
+                        
+                        if (!phone) {
+                            alert('No phone number available for this client');
+                            return;
+                        }
+                        
+                        // Make call using NotaryVoiceAgent if available
+                        if (hasNotaryVoiceAgent) {
+                            console.log('Making call using NotaryVoiceAgent...');
+                            const call = NotaryVoiceAgent.startCall(phone, {
+                                recording: true,
+                                transcription: true
+                            });
+                            
+                            console.log('Call result:', call);
+                            
+                            if (call) {
+                                // Redirect to calls page
+                                window.location.href = 'calls.html';
+                            } else {
+                                console.error('Failed to start call with NotaryVoiceAgent');
+                                alert('Failed to start call. Please try again.');
+                            }
+                        }
+                        // Fall back to using TwilioIntegration directly
+                        else if (hasTwilioIntegration) {
+                            console.log('Making call using TwilioIntegration directly...');
+                            const call = TwilioIntegration.startCall(phone, {
+                                recording: true,
+                                transcription: true
+                            });
+                            
+                            console.log('Call result:', call);
+                            
+                            if (call) {
+                                // Redirect to calls page
+                                window.location.href = 'calls.html';
+                            } else {
+                                console.error('Failed to start call with TwilioIntegration');
+                                alert('Failed to start call. Please try again.');
+                            }
+                        } else {
+                            console.log('No call integration available, showing mock alert');
+                            alert('Initiating call to ' + phone);
+                        }
+                    });
+                });
+            }
             
-            // Call client buttons
-            document.querySelectorAll('.call-client').forEach(button => {
-                button.addEventListener('click', function() {
-                    const clientId = this.getAttribute('data-id');
-                    
-                    if (window.NotaryVoiceAgent) {
-                        // Find client info
-                        const clientRow = this.closest('tr');
-                        const phone = clientRow.querySelector('td:nth-child(3)').textContent;
-                        
-                        // Start call with NotaryVoiceAgent
-                        NotaryVoiceAgent.startCall(phone, {
-                            recording: true,
-                            transcription: true
-                        });
-                        
-                        // Redirect to calls page
-                        window.location.href = 'calls.html';
-                    } else {
-                        alert('Initiating call to client #' + clientId);
-                    }
-                });
-            });
+            // Setup handlers for existing buttons
+            setupClientButtonHandlers(document);
         });
     </script>
 </body>
