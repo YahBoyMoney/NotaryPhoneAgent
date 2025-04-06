@@ -1,0 +1,13 @@
+[build]
+  publish = "public"
+  command = "echo 'No build required'"
+
+[build.environment]
+  NODE_VERSION = "18"
+  # Explicitly disable Python
+  PYTHON_VERSION = ""
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
