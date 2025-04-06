@@ -26,7 +26,7 @@ const TwilioIntegration = (function() {
     let callHistory = [];
     let smsHistory = [];
     let debugMode = true; // Set to true for detailed logging
-    let isMockMode = true; // Default to mock mode until we confirm real Twilio connection
+    let isMockMode = false; // Default to real mode and only fall back to mock when necessary
     
     // Load call and SMS history from local storage
     function loadHistories() {
@@ -73,9 +73,16 @@ const TwilioIntegration = (function() {
         if (isMockToken) {
             console.error('Real Twilio functionality requested but received mock token');
             notifyListeners('error', { 
-                message: 'Real Twilio functionality was requested but server returned a mock token. Please configure Twilio credentials in your Netlify environment variables.',
-                code: 'MOCK_TOKEN_REJECTED'
+                message: 'Unable to use Twilio: Missing Twilio credentials in your environment.',
+                code: 'TWILIO_CREDENTIALS_MISSING'
             });
+            
+            // Show a prominent banner alerting the user they're in mock mode
+            showMockModeBanner();
+            
+            // Fall back to mock implementation
+            isMockMode = true;
+            useMockImplementation();
             return;
         }
         
@@ -87,7 +94,10 @@ const TwilioIntegration = (function() {
                 code: 'TWILIO_SDK_MISSING'
             });
             
-            // Fall back to mock implementation for development
+            // Show a prominent banner alerting the user they're in mock mode
+            showMockModeBanner();
+            
+            // Fall back to mock implementation
             isMockMode = true;
             useMockImplementation();
             return;
@@ -116,6 +126,9 @@ const TwilioIntegration = (function() {
             isInitialized = true;
             isMockMode = false;
             
+            // Remove mock mode banner if it exists
+            removeMockModeBanner();
+            
             console.log('Twilio device initialized successfully');
         } catch (error) {
             console.error('Error initializing Twilio device:', error);
@@ -125,7 +138,10 @@ const TwilioIntegration = (function() {
                 details: error 
             });
             
-            // Fall back to mock implementation for development
+            // Show a prominent banner alerting the user they're in mock mode
+            showMockModeBanner();
+            
+            // Fall back to mock implementation
             isMockMode = true;
             useMockImplementation();
         }
@@ -387,90 +403,84 @@ const TwilioIntegration = (function() {
         return '+' + cleaned;
     }
     
-    // Fall back to mock implementation for development or when Twilio is unavailable
-    function useMockImplementation() {
-        console.log('Using mock Twilio implementation');
-        isInitialized = { mock: true };
-        isMockMode = true;
-        notifyListeners('deviceReady', { mock: true });
+    // Helper functions for mock mode UI
+    function showMockModeBanner() {
+        // Remove existing banner if it exists
+        removeMockModeBanner();
+        
+        // Create a new banner
+        const banner = document.createElement('div');
+        banner.id = 'mock-mode-banner';
+        banner.style.position = 'fixed';
+        banner.style.top = '0';
+        banner.style.left = '0';
+        banner.style.right = '0';
+        banner.style.backgroundColor = '#f44336';
+        banner.style.color = 'white';
+        banner.style.padding = '10px';
+        banner.style.textAlign = 'center';
+        banner.style.zIndex = '9999';
+        banner.style.fontWeight = 'bold';
+        
+        banner.innerHTML = `
+            ⚠️ MOCK MODE ACTIVE: Calls and SMS will be simulated. To enable real Twilio functionality, 
+            please set up your Twilio account credentials in Netlify environment variables. 
+            <a href="https://docs.netlify.com/configure-builds/environment-variables/" 
+               style="color: white; text-decoration: underline;" 
+               target="_blank">Learn more</a>
+        `;
+        
+        document.body.appendChild(banner);
+        
+        // Add some margin to the top of the body to prevent content from being hidden behind banner
+        document.body.style.marginTop = (banner.offsetHeight + 5) + 'px';
     }
     
-    // Mock connection for local development/testing
+    function removeMockModeBanner() {
+        const existingBanner = document.getElementById('mock-mode-banner');
+        if (existingBanner) {
+            document.body.removeChild(existingBanner);
+            document.body.style.marginTop = '0';
+        }
+    }
+
+    // Mock implementation for development without Twilio credentials
+    function useMockImplementation() {
+        console.log('Using mock implementation for Twilio');
+        isInitialized = true;
+        isMockMode = true;
+        notifyListeners('mockMode', { active: true });
+    }
+
+    // Mock function to simulate connecting a call
     function mockConnectCall(params) {
-        console.log('Creating mock connection for:', params);
+        console.log('MOCK: Connecting call to', params.To, 'with params:', params);
         
-        if (!params || !params.To) {
-            console.error('Missing phone number for mock call');
-            notifyListeners('error', { 
-                message: 'Phone number is required',
-                code: 'MISSING_PHONE_NUMBER'
-            });
-            return null;
-        }
+        // Show warning about mock mode
+        alert('MOCK MODE: This is a simulated call. No real calls will be made because Twilio credentials are not configured.');
         
-        const formattedNumber = formatPhoneNumber(params.To);
-        if (!formattedNumber) {
-            console.error('Invalid phone number for mock call:', params.To);
-            notifyListeners('error', { 
-                message: 'Invalid phone number',
-                code: 'INVALID_PHONE_NUMBER',
-                number: params.To
-            });
-            return null;
-        }
-        
-        const mockCallSid = 'MC' + Date.now() + Math.random().toString(36).substring(2, 8);
-        console.log(`Creating mock call with SID ${mockCallSid} to ${formattedNumber}`);
-        
-        // Create a popup or UI indication that this is a mock call
-        if (typeof window !== 'undefined') {
-            console.warn('MOCK CALL: This is a simulated call and will not ring actual phones');
-        }
-        
-        const mockConnection = {
+        // Create a mock connection object
+        activeConnection = {
             parameters: {
-                CallSid: mockCallSid,
-                Direction: 'outbound',
-                From: '+15555555555', // Mock "from" number
-                To: formattedNumber
+                From: params.From || '+15555555555',
+                To: params.To,
+                CallSid: 'mock_call_' + Math.random().toString(36).substring(2, 15),
+                Direction: 'outbound-api'
+            },
+            status: function() { return 'open'; },
+            disconnect: function() {
+                console.log('MOCK: Disconnecting call');
+                mockDisconnectCall();
             },
             on: function(event, callback) {
-                // Store the callbacks for triggering later
-                if (event === 'accept') {
-                    setTimeout(() => {
-                        callback();
-                        console.log(`[MOCK] Call connected to ${formattedNumber}`);
-                    }, 1000);
+                // Store callback to simulate events
+                if (!listeners['connection_' + event]) {
+                    listeners['connection_' + event] = [];
                 }
-            },
-            mute: function(bool) {
-                console.log(`[MOCK] Call ${bool ? 'muted' : 'unmuted'}`);
-                return this;
-            },
-            disconnect: function() {
-                setTimeout(() => {
-                    console.log('[MOCK] Call disconnected');
-                    
-                    // Update call history
-                    if (callHistory.length > 0) {
-                        callHistory[0].status = 'completed';
-                        callHistory[0].duration = callDuration;
-                        callHistory[0].endTime = new Date().toISOString();
-                        saveHistories();
-                    }
-                    
-                    notifyListeners('disconnected', { 
-                        callSid: this.parameters.CallSid, 
-                        duration: callDuration,
-                        timestamp: new Date().toISOString()
-                    });
-                    resetCallState();
-                }, 500);
+                listeners['connection_' + event].push(callback);
                 return this;
             }
         };
-        
-        activeConnection = mockConnection;
         
         // Simulate connection setup
         setTimeout(() => {
@@ -484,17 +494,17 @@ const TwilioIntegration = (function() {
             }
             
             notifyListeners('connected', {
-                callSid: mockConnection.parameters.CallSid,
-                direction: mockConnection.parameters.Direction,
-                from: mockConnection.parameters.From,
-                to: mockConnection.parameters.To,
+                callSid: activeConnection.parameters.CallSid,
+                direction: activeConnection.parameters.Direction,
+                from: activeConnection.parameters.From,
+                to: activeConnection.parameters.To,
                 timestamp: new Date().toISOString(),
                 mock: true // Explicitly mark as mock
             });
             startCallDurationTimer();
         }, 1000);
         
-        return mockConnection;
+        return activeConnection;
     }
     
     // Notify all registered listeners of events
@@ -660,34 +670,47 @@ const TwilioIntegration = (function() {
             
             // If mock mode or Twilio device not available, use mock implementation
             if (isMockMode || !twilioDevice || isInitialized.mock) {
-                console.log('Making mock call to:', formattedNumber);
+                console.log('Using mock call implementation');
                 
-                // Attempt to use the Netlify Function if available, but just for logging
-                try {
-                    fetch(config.callEndpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            to: formattedNumber,
-                            from: options.from || null,
-                            recording: options.recording !== false,
-                            callbackUrl: options.callbackUrl || config.statusEndpoint
-                        })
-                    }).then(response => {
-                        // We don't need to do anything with this response in mock mode
-                        console.log('Mock call logged to Netlify function');
-                    }).catch(err => {
-                        console.log('Could not log mock call to Netlify function:', err);
+                // First add call to history
+                const callData = {
+                    type: 'outbound',
+                    phoneNumber: formattedNumber,
+                    status: 'dialing',
+                    timestamp: new Date().toISOString()
+                };
+                
+                addCallToHistory(callData);
+                
+                // Then trigger mock connection
+                setTimeout(() => {
+                    mockConnectCall({ 
+                        To: formattedNumber,
+                        From: options.from || '+15555555555',
+                        ...options 
                     });
-                } catch (e) {
-                    console.log('Error logging mock call to Netlify function:', e);
-                }
+                    
+                    // Simulate connected event after a short delay
+                    setTimeout(() => {
+                        if (listeners['connection_accept'] && listeners['connection_accept'].length) {
+                            listeners['connection_accept'].forEach(callback => callback());
+                        }
+                        
+                        notifyListeners('connected', {
+                            to: formattedNumber,
+                            from: options.from || '+15555555555',
+                            direction: 'outbound',
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        startCallDurationTimer();
+                    }, 1500);
+                }, 1000);
                 
-                // Always use mock implementation in mock mode
-                const mockConnection = mockConnectCall({ To: formattedNumber });
-                return mockConnection;
+                return Promise.resolve({
+                    status: 'mock-initiated',
+                    phoneNumber: formattedNumber
+                });
             }
             
             // If Twilio device is available, use it to make the call
