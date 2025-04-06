@@ -9,8 +9,7 @@
   "dependencies": {
     "serve": "^14.2.1",
     "twilio": "^4.19.0",
-    "twilio-client": "^1.15.0",
-    "eleven-labs": "^1.0.0"
+    "twilio-client": "^1.15.0"
   },
   "devDependencies": {}
 } 
