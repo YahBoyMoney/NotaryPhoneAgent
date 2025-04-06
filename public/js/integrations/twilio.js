@@ -32,55 +32,103 @@ const TwilioIntegration = (function() {
         };
     }
     
+    // Format phone number to E.164 format
+    function formatPhoneNumber(phoneNumber) {
+        // Strip out all non-numeric characters
+        let digits = phoneNumber.replace(/\D/g, '');
+        
+        // If US/Canada number without country code, add +1
+        if (digits.length === 10) {
+            return '+1' + digits;
+        }
+        
+        // If it already has country code but no plus, add it
+        if (digits.length === 11 && digits.charAt(0) === '1') {
+            return '+' + digits;
+        }
+        
+        // If no plus but has international format, add it
+        if (digits.length > 10 && digits.charAt(0) !== '+') {
+            return '+' + digits;
+        }
+        
+        // Return the digits with a plus if not already there
+        return digits.charAt(0) === '+' ? digits : '+' + digits;
+    }
+    
     // Mock implementation for demo purposes
     function mockConnectCall(params) {
-        console.log('Connecting call with params:', params);
-        
-        activeCall = {
-            id: 'call-' + Math.floor(Math.random() * 1000000),
-            to: params.to,
-            from: params.from || 'Your Notary Number',
-            startTime: new Date(),
-            status: 'in-progress',
-            recording: params.recording !== false,
-            transcription: params.transcription !== false,
-            notes: params.notes || ''
-        };
-        
-        // Start call timer
-        startCallTimer();
-        
-        // Notify listeners
-        notifyCallListeners('connected', activeCall);
-        
-        return activeCall;
+        try {
+            console.log('Connecting call with params:', params);
+            
+            if (!params.to) {
+                console.error('No phone number provided');
+                return false;
+            }
+            
+            // Format the phone number
+            const formattedNumber = formatPhoneNumber(params.to);
+            console.log('Formatted phone number:', formattedNumber);
+            
+            activeCall = {
+                id: 'call-' + Math.floor(Math.random() * 1000000),
+                to: formattedNumber,
+                from: params.from || 'Your Notary Number',
+                startTime: new Date(),
+                status: 'in-progress',
+                recording: params.recording !== false,
+                transcription: params.transcription !== false,
+                notes: params.notes || ''
+            };
+            
+            // Start call timer
+            startCallTimer();
+            
+            // Notify listeners
+            notifyCallListeners('connected', activeCall);
+            
+            return activeCall;
+        } catch (error) {
+            console.error('Error connecting call:', error);
+            return false;
+        }
     }
     
     // Start a call to a client
     function startCall(phoneNumber, options = {}) {
         console.log('TwilioIntegration.startCall called with:', phoneNumber, options);
         
-        if (activeCall) {
-            console.warn('There is already an active call. Please end it before starting a new one.');
-            return false;
-        }
-        
-        const params = {
-            to: phoneNumber,
-            from: options.from || 'Your Notary Number',
-            recording: options.recording !== false,
-            transcription: options.transcription !== false,
-            callbackUrl: options.callbackUrl || config.apiEndpoint + '/status',
-            notes: options.notes || ''
-        };
-        
-        const device = initTwilioDevice();
-        
-        if (device.ready) {
-            console.log('Twilio device ready, connecting call...');
-            return device.connect(params);
-        } else {
-            console.error('Twilio Device is not ready.');
+        try {
+            if (!phoneNumber) {
+                console.error('No phone number provided');
+                return false;
+            }
+            
+            if (activeCall) {
+                console.warn('There is already an active call. Please end it before starting a new one.');
+                return false;
+            }
+            
+            const params = {
+                to: phoneNumber,
+                from: options.from || 'Your Notary Number',
+                recording: options.recording !== false,
+                transcription: options.transcription !== false,
+                callbackUrl: options.callbackUrl || config.apiEndpoint + '/status',
+                notes: options.notes || ''
+            };
+            
+            const device = initTwilioDevice();
+            
+            if (device.ready) {
+                console.log('Twilio device ready, connecting call...');
+                return device.connect(params);
+            } else {
+                console.error('Twilio Device is not ready.');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error starting call:', error);
             return false;
         }
     }
@@ -94,27 +142,36 @@ const TwilioIntegration = (function() {
             return false;
         }
         
-        // In a real implementation, this would make an API call to send the SMS
-        // For demo purposes, we'll simulate a successful send
-        
-        const smsId = 'sms-' + Math.floor(Math.random() * 1000000);
-        
-        const sms = {
-            id: smsId,
-            to: to,
-            from: options.from || 'Your Notary Number',
-            body: message,
-            sentTime: new Date(),
-            status: 'sent'
-        };
-        
-        // Store SMS in history
-        saveSmsToHistory(sms);
-        
-        // Notify listeners
-        notifyCallListeners('smsSent', sms);
-        
-        return sms;
+        try {
+            // Format the phone number
+            const formattedNumber = formatPhoneNumber(to);
+            console.log('Formatted SMS phone number:', formattedNumber);
+            
+            // In a real implementation, this would make an API call to send the SMS
+            // For demo purposes, we'll simulate a successful send
+            
+            const smsId = 'sms-' + Math.floor(Math.random() * 1000000);
+            
+            const sms = {
+                id: smsId,
+                to: formattedNumber,
+                from: options.from || 'Your Notary Number',
+                body: message,
+                sentTime: new Date(),
+                status: 'sent'
+            };
+            
+            // Store SMS in history
+            saveSmsToHistory(sms);
+            
+            // Notify listeners
+            notifyCallListeners('smsSent', sms);
+            
+            return sms;
+        } catch (error) {
+            console.error('Error sending SMS:', error);
+            return false;
+        }
     }
     
     // End the current active call
@@ -124,31 +181,36 @@ const TwilioIntegration = (function() {
             return false;
         }
         
-        // Stop the timer
-        stopCallTimer();
-        
-        // Set call end time and status
-        activeCall.endTime = new Date();
-        activeCall.status = 'completed';
-        activeCall.duration = callDuration;
-        
-        // In a real implementation, this would send a request to end the call on Twilio
-        
-        // Notify listeners
-        notifyCallListeners('disconnected', activeCall);
-        
-        // Generate a call summary (mock implementation)
-        generateCallSummary(activeCall);
-        
-        // Store call history
-        saveCallToHistory(activeCall);
-        
-        // Clear active call
-        const completedCall = {...activeCall};
-        activeCall = null;
-        callDuration = 0;
-        
-        return completedCall;
+        try {
+            // Stop the timer
+            stopCallTimer();
+            
+            // Set call end time and status
+            activeCall.endTime = new Date();
+            activeCall.status = 'completed';
+            activeCall.duration = callDuration;
+            
+            // In a real implementation, this would send a request to end the call on Twilio
+            
+            // Notify listeners
+            notifyCallListeners('disconnected', activeCall);
+            
+            // Generate a call summary (mock implementation)
+            generateCallSummary(activeCall);
+            
+            // Store call history
+            saveCallToHistory(activeCall);
+            
+            // Clear active call
+            const completedCall = {...activeCall};
+            activeCall = null;
+            callDuration = 0;
+            
+            return completedCall;
+        } catch (error) {
+            console.error('Error ending call:', error);
+            return false;
+        }
     }
     
     // Save SMS to history
