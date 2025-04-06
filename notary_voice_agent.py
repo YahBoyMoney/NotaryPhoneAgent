@@ -38,11 +38,11 @@ def get_greeting():
     """Return time-appropriate greeting message"""
     hour = datetime.datetime.now().hour
     if hour < 12:
-        return "Good morning, how can I help you?"
+        return "Good morning!"
     elif hour < 18:
-        return "Hi, how can I help you?"
+        return "Good afternoon!"
     else:
-        return "Good evening, how can I help you?"
+        return "Good evening!"
 
 def save_client(phone, name, address):
     """Save or update client information, respecting RLS policies"""
@@ -150,17 +150,23 @@ def voice():
     """Handle initial call and prompt for service needed"""
     response = VoiceResponse()
     
-    # Start call recording for compliance and quality
-    response.record(timeout=0, transcribe=True, recording_status_callback="/recording-status")
+    # Start recording the call with proper callbacks
+    response.record(
+        timeout=10, 
+        transcribe=True, 
+        recording_status_callback="/recording-status",
+        recording_status_callback_method="POST"
+    )
     
+    # Set status callback for the entire call
+    response.dial().hangup()  # Remove this as it's causing issues
+    
+    # Continue with the existing call flow
     greeting = get_greeting()
     gather = Gather(input='speech', action="/handle-service", method="POST", timeout=3)
-    gather.say(f"{greeting} Thank you for calling our notary service. Please tell me what notary service you need today.")
+    gather.say(f"{greeting} Please tell me what notary service you need today.")
     response.append(gather)
-    
-    # If no input detected
-    response.say("I didn't catch that. Let me connect you to an agent.")
-    # In production, add a redirect to a human agent here
+    response.say("I didn't catch that. Please try again.")
     
     return Response(str(response), mimetype="text/xml")
 
@@ -273,20 +279,69 @@ def handle_follow_up():
     response.hangup()
     return Response(str(response), mimetype="text/xml")
 
+@app.route("/call-status", methods=["POST"])
+def call_status():
+    """Log call status changes from Twilio"""
+    response = VoiceResponse()
+    call_sid = request.values.get("CallSid")
+    call_status = request.values.get("CallStatus")
+    duration = request.values.get("CallDuration")
+    caller = request.values.get("From", "Unknown")
+    timestamp = datetime.datetime.now().isoformat()
+    
+    try:
+        supabase.table("call_logs").insert({
+            "call_sid": call_sid,
+            "caller": caller,
+            "status": call_status,
+            "duration": duration,
+            "timestamp": timestamp
+        }).execute()
+        print("Call log inserted successfully")
+    except Exception as e:
+        print("Error inserting call log:", e)
+    
+    return Response(str(response), mimetype="text/xml")
+
 @app.route("/recording-status", methods=["POST"])
 def recording_status():
     """Handle recording status callbacks from Twilio"""
-    recording_url = request.values.get('RecordingUrl', None)
-    call_sid = request.values.get('CallSid', 'Unknown')
-    recording_sid = request.values.get('RecordingSid', 'Unknown')
-    transcript = request.values.get('TranscriptionText', None)
+    response = VoiceResponse()
+    recording_url = request.values.get("RecordingUrl")
+    recording_sid = request.values.get("RecordingSid")
+    transcription = request.values.get("TranscriptionText", "")
+    call_sid = request.values.get("CallSid", "Unknown")
+    timestamp = datetime.datetime.now().isoformat()
     
-    # In a production app, you would:
-    # 1. Look up the session_id associated with this call
-    # 2. Save the recording URL to the documents table
-    # 3. Update the session with the transcript
+    try:
+        # First, try to find an associated session for this call
+        session_result = supabase.table("sessions").select("id").eq("call_sid", call_sid).execute()
+        session_id = session_result.data[0]['id'] if session_result.data else None
+        
+        # Save recording to recordings table
+        recording_data = {
+            "recording_url": recording_url,
+            "recording_sid": recording_sid,
+            "transcription": transcription,
+            "call_sid": call_sid,
+            "timestamp": timestamp
+        }
+        
+        if session_id:
+            recording_data["session_id"] = session_id
+        
+        supabase.table("recordings").insert(recording_data).execute()
+        print(f"Recording log inserted successfully for call {call_sid}")
+        
+        # If we have a session ID, also save to documents table for the dashboard
+        if session_id:
+            save_call_recording(session_id, recording_url, transcription)
+            print(f"Recording saved to documents for session {session_id}")
+            
+    except Exception as e:
+        print(f"Error inserting recording log: {str(e)}")
     
-    return Response("", mimetype="text/xml")
+    return Response(str(response), mimetype="text/xml")
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
