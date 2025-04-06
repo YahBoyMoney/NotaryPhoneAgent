@@ -1,0 +1,246 @@
+/* Custom CSS for Notary Voice Agent Admin Dashboard */
+
+/* Style for status badges */
+.badge-scheduled {
+    background-color: #007bff;
+    color: white;
+}
+
+.badge-completed {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-canceled {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Style for document type badges */
+.badge-notarized_document {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.badge-identification {
+    background-color: #fd7e14;
+    color: white;
+}
+
+.badge-recording {
+    background-color: #20c997;
+    color: white;
+}
+
+/* Style for the chart containers */
+.chart-container {
+    height: 300px;
+    position: relative;
+}
+
+/* Transcript styles */
+.transcript-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+}
+
+.message {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.message-agent {
+    background-color: #e9ecef;
+}
+
+.message-client {
+    background-color: #cfe2ff;
+}
+
+.message-timestamp {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Responsive sidebar */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1030;
+        overflow-y: auto;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Call recording card styles */
+.call-card {
+    transition: transform 0.2s;
+}
+
+.call-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Stats card hover effect */
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Table styles */
+.table-container {
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Button group spacing */
+.btn-group > .btn:not(:last-child) {
+    margin-right: 0.25rem;
+}
+
+/* Custom styles for form controls */
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Base transitions for smoother UI */
+a, button, .btn {
+    transition: all 0.2s;
+}
+
+/* Service type badges */
+.badge-standard {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-travel {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-hospital {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.badge-jail {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Timeline styling for client detail */
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    height: 100%;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+    padding-left: 45px;
+}
+
+.timeline-date {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.timeline-content {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #007bff;
+    border: 3px solid white;
+}
+
+/* Animation for loading states */
+.loading {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Print styles */
+@media print {
+    .sidebar, .header-buttons, .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background-color: white !important;
+    }
+    
+    .content-area {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+} 

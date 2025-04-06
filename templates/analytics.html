@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Notary Voice Agent Admin{% endblock %}
+
+{% block page_title %}Analytics{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group me-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-calendar-alt"></i> Time Range
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item date-range" href="#" data-range="7">Last 7 Days</a></li>
+        <li><a class="dropdown-item date-range" href="#" data-range="30">Last 30 Days</a></li>
+        <li><a class="dropdown-item date-range" href="#" data-range="90">Last 90 Days</a></li>
+        <li><a class="dropdown-item date-range" href="#" data-range="365">Last 12 Months</a></li>
+        <li><a class="dropdown-item date-range" href="#" data-range="all">All Time</a></li>
+    </ul>
+</div>
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-outline-primary" id="exportReportBtn">
+        <i class="fas fa-file-export"></i> Export Report
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Service Type Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div id="serviceTypeChart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Monthly Revenue</h5>
+            </div>
+            <div class="card-body">
+                <div id="revenueChart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Performance Metrics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="stat-value">$2,850</div>
+                            <div class="stat-label">Monthly Revenue</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <div class="stat-value">32</div>
+                            <div class="stat-label">Completed Sessions</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-value">15%</div>
+                            <div class="stat-label">Monthly Growth</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="stat-value">4.8</div>
+                            <div class="stat-label">Customer Rating</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse the service types data from the server
+        const serviceTypesData = JSON.parse('{{ service_types|safe }}');
+        const revenueData = JSON.parse('{{ revenue_by_month|safe }}');
+        
+        // Service Type Distribution Chart
+        const serviceTypeLabels = serviceTypesData.map(item => item.type);
+        const serviceTypeCounts = serviceTypesData.map(item => item.count);
+        const serviceTypeColors = [
+            'rgba(40, 167, 69, 0.7)',  // standard
+            'rgba(23, 162, 184, 0.7)', // travel
+            'rgba(111, 66, 193, 0.7)', // hospital
+            'rgba(220, 53, 69, 0.7)'   // jail
+        ];
+        
+        const serviceTypeCtx = document.getElementById('serviceTypeChart').getContext('2d');
+        new Chart(serviceTypeCtx, {
+            type: 'pie',
+            data: {
+                labels: serviceTypeLabels,
+                datasets: [{
+                    data: serviceTypeCounts,
+                    backgroundColor: serviceTypeColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+        
+        // Monthly Revenue Chart
+        const revenueMonths = revenueData.map(item => item.month);
+        const revenueValues = revenueData.map(item => item.revenue);
+        
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'bar',
+            data: {
+                labels: revenueMonths,
+                datasets: [{
+                    label: 'Revenue ($)',
+                    data: revenueValues,
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

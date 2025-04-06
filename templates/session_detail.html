@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}Session Detail - Notary Voice Agent Admin{% endblock %}
+
+{% block page_title %}Session Detail{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSessionModal">
+        <i class="fas fa-edit"></i> Edit Session
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSessionModal">
+        <i class="fas fa-trash"></i> Delete
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if session %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Session Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <th>Date/Time:</th>
+                        <td>{{ session.session_date }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status:</th>
+                        <td>
+                            {% if session.status == 'scheduled' %}
+                                <span class="badge bg-primary">Scheduled</span>
+                            {% elif session.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif session.status == 'canceled' %}
+                                <span class="badge bg-danger">Canceled</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ session.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Service Type:</th>
+                        <td>
+                            {% if 'jail' in session.notes|lower %}
+                                <span class="badge bg-danger">Jail</span>
+                            {% elif 'hospital' in session.notes|lower %}
+                                <span class="badge bg-purple">Hospital</span>
+                            {% elif 'travel' in session.notes|lower %}
+                                <span class="badge bg-info">Travel</span>
+                            {% else %}
+                                <span class="badge bg-success">Standard</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                <h6 class="mt-3">Notes:</h6>
+                <p>{{ session.notes }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Client Information</h5>
+            </div>
+            <div class="card-body">
+                {% if client %}
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="mb-0">{{ client.name }}</h6>
+                            <p class="text-muted mb-0">{{ client.phone }}</p>
+                        </div>
+                        <a href="{{ url_for('client_detail', client_id=client.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-user"></i> View Client
+                        </a>
+                    </div>
+                    {% if client.address %}
+                        <p><i class="fas fa-map-marker-alt me-2"></i> {{ client.address }}</p>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-warning">Client information not available</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        {% if session.transcript %}
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Call Recording</h5>
+                    {% if session.recording_url %}
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary download-recording" data-id="{{ session.id }}">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if session.recording_url %}
+                        <div class="mb-3">
+                            <audio controls class="w-100">
+                                <source src="{{ session.recording_url }}" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mb-3">
+                            <div>Recorded: {{ session.recording_date }}</div>
+                            <div>Duration: {{ session.recording_duration }}</div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">No recording available for this session</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Transcript</h5>
+                </div>
+                <div class="card-body">
+                    <div class="transcript-container">
+                        {% for message in session.transcript %}
+                            <div class="message message-{{ message.speaker }}">
+                                <div class="message-header">
+                                    <strong>{{ message.speaker|title }}</strong>
+                                    <span class="message-timestamp">{{ message.timestamp }}</span>
+                                </div>
+                                <div class="message-body">
+                                    {{ message.text }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Call Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        No call recording or transcript available for this session.
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if documents %}
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Documents</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                        <i class="fas fa-upload"></i> Upload Document
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for document in documents %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-truncate">{{ document.name }}</h6>
+                                        <p class="text-muted small">
+                                            Type: 
+                                            <span class="badge bg-info">{{ document.document_type }}</span>
+                                        </p>
+                                        <div class="d-flex justify-content-between mt-auto">
+                                            <button class="btn btn-sm btn-outline-primary view-document" data-id="{{ document.id }}">
+                                                <i class="fas fa-eye"></i> View
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary download-document" data-id="{{ document.id }}">
+                                                <i class="fas fa-download"></i> Download
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Session Modal -->
+<div class="modal fade" id="editSessionModal" tabindex="-1" aria-labelledby="editSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSessionModalLabel">Edit Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSessionForm">
+                    <div class="mb-3">
+                        <label for="editSessionDate" class="form-label">Date & Time</label>
+                        <input type="datetime-local" class="form-control" id="editSessionDate" value="{{ session.session_date_raw|default('') }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSessionStatus" class="form-label">Status</label>
+                        <select class="form-control" id="editSessionStatus">
+                            <option value="scheduled" {% if session.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                            <option value="completed" {% if session.status == 'completed' %}selected{% endif %}>Completed</option>
+                            <option value="canceled" {% if session.status == 'canceled' %}selected{% endif %}>Canceled</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSessionNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="editSessionNotes" rows="3">{{ session.notes }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateSessionBtn">Update Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Session Modal -->
+<div class="modal fade" id="deleteSessionModal" tabindex="-1" aria-labelledby="deleteSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteSessionModalLabel">Delete Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this session?</p>
+                <p class="text-danger">This will also delete all recordings and documents associated with this session. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Document Modal -->
+<div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadDocumentModalLabel">Upload Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadDocumentForm">
+                    <div class="mb-3">
+                        <label for="documentName" class="form-label">Document Name</label>
+                        <input type="text" class="form-control" id="documentName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentType" class="form-label">Document Type</label>
+                        <select class="form-control" id="documentType">
+                            <option value="notarized_document">Notarized Document</option>
+                            <option value="identification">Identification</option>
+                            <option value="supporting_document">Supporting Document</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentFile" class="form-label">File</label>
+                        <input type="file" class="form-control" id="documentFile" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="uploadDocumentBtn">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Session not found</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Update session
+        $('#updateSessionBtn').click(function() {
+            alert('In a production environment, this would update the session details in the database.');
+            $('#editSessionModal').modal('hide');
+        });
+        
+        // Delete session
+        $('#confirmDeleteBtn').click(function() {
+            alert('In a production environment, this would delete the session from the database.');
+            $('#deleteSessionModal').modal('hide');
+            // Redirect to sessions list in a real implementation
+            window.location.href = "{{ url_for('sessions_list') }}";
+        });
+        
+        // Document upload
+        $('#uploadDocumentBtn').click(function() {
+            alert('In a production environment, this would upload the document to storage and save details in the database.');
+            $('#uploadDocumentModal').modal('hide');
+        });
+        
+        // View document
+        $('.view-document').click(function() {
+            const documentId = $(this).data('id');
+            alert('In a production environment, this would open the document for viewing.');
+        });
+        
+        // Download document
+        $('.download-document').click(function() {
+            const documentId = $(this).data('id');
+            alert('In a production environment, this would download the document.');
+        });
+        
+        // Download recording
+        $('.download-recording').click(function() {
+            const sessionId = $(this).data('id');
+            alert('In a production environment, this would download the call recording.');
+        });
+    });
+</script>
+{% endblock %} 

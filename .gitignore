@@ -1,0 +1,53 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Flask
+instance/
+.webassets-cache
+
+# Logs
+*.log
+logs/
+dashboard_error.txt
+
+# Deployment
+.DS_Store
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo 

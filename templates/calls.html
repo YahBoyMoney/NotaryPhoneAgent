@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Call Recordings - Notary Voice Agent Admin{% endblock %}
+
+{% block page_title %}Call Recordings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5>Recent Calls</h5>
+    </div>
+    <div class="card-body">
+        {% if recordings %}
+            <div class="row">
+                {% for recording in recordings %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">{{ recording.name }}</h6>
+                                <span class="badge bg-primary">{{ recording.date }}</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">Client: {{ recording.client_name }} | {{ recording.client_phone }}</p>
+                                <audio controls class="w-100 mb-3">
+                                    <source src="{{ recording.url }}" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                                
+                                <div class="card bg-light">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Transcript Preview</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="small">{{ recording.transcript }}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between mt-3">
+                                    <a href="{{ url_for('session_detail', session_id=recording.session_id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-file-alt"></i> Full Transcript
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-secondary download-recording" data-id="{{ recording.id }}">
+                                        <i class="fas fa-download"></i> Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No call recordings found.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('.download-recording').click(function() {
+            const recordingId = $(this).data('id');
+            downloadRecording(recordingId);
+        });
+    });
+</script>
+{% endblock %} 

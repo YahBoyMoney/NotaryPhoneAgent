@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Notary Voice Agent Admin{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-value">{{ client_count }}</div>
+            <div class="stat-label">Total Clients</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-value">{{ session_count }}</div>
+            <div class="stat-label">Total Sessions</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-value">{{ active_sessions }}</div>
+            <div class="stat-label">Upcoming Sessions</div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Sessions</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>John Smith</strong>
+                            <div class="text-muted small">Tomorrow at 10:00 AM</div>
+                        </div>
+                        <span class="badge bg-primary">Scheduled</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Sarah Johnson</strong>
+                            <div class="text-muted small">Today at 2:30 PM</div>
+                        </div>
+                        <span class="badge bg-primary">Scheduled</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Robert Davis</strong>
+                            <div class="text-muted small">Yesterday at 4:15 PM</div>
+                        </div>
+                        <span class="badge bg-success">Completed</span>
+                    </li>
+                </ul>
+                <div class="mt-3 text-center">
+                    <a href="{{ url_for('sessions') }}" class="btn btn-sm btn-outline-primary">View All Sessions</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Clients</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>John Smith</strong>
+                            <div class="text-muted small">(555) 123-4567</div>
+                        </div>
+                        <a href="{{ url_for('client_detail', client_id='1') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Sarah Johnson</strong>
+                            <div class="text-muted small">(555) 987-6543</div>
+                        </div>
+                        <a href="{{ url_for('client_detail', client_id='2') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Robert Davis</strong>
+                            <div class="text-muted small">(555) 456-7890</div>
+                        </div>
+                        <a href="{{ url_for('client_detail', client_id='3') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </li>
+                </ul>
+                <div class="mt-3 text-center">
+                    <a href="{{ url_for('clients') }}" class="btn btn-sm btn-outline-primary">View All Clients</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('clients') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-user-plus"></i> Add Client
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('sessions') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-calendar-plus"></i> Schedule Session
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('calls') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-phone-alt"></i> View Calls
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('analytics') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-chart-bar"></i> Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

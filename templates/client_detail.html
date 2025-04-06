@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Client Detail - Notary Voice Agent Admin{% endblock %}
+
+{% block page_title %}Client Detail{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editClientModal">
+        <i class="fas fa-edit"></i> Edit Client
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteClientModal">
+        <i class="fas fa-trash"></i> Delete
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if client %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Client Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <h4>{{ client.name }}</h4>
+                    <span class="badge bg-primary">{{ client.session_count|default(0) }} Sessions</span>
+                </div>
+                
+                <table class="table table-sm">
+                    <tr>
+                        <th><i class="fas fa-phone me-2"></i> Phone:</th>
+                        <td>{{ client.phone }}</td>
+                    </tr>
+                    {% if client.address %}
+                    <tr>
+                        <th><i class="fas fa-map-marker-alt me-2"></i> Address:</th>
+                        <td>{{ client.address }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if client.email %}
+                    <tr>
+                        <th><i class="fas fa-envelope me-2"></i> Email:</th>
+                        <td>{{ client.email }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th><i class="fas fa-calendar me-2"></i> Created:</th>
+                        <td>{{ client.created_at }}</td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-clock me-2"></i> Last Updated:</th>
+                        <td>{{ client.updated_at }}</td>
+                    </tr>
+                </table>
+                
+                <div class="d-grid gap-2 mt-3">
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#scheduleSessionModal">
+                        <i class="fas fa-calendar-plus"></i> Schedule Session
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="sendMessageBtn">
+                        <i class="fas fa-sms"></i> Send Message
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Notes</h5>
+            </div>
+            <div class="card-body">
+                {% if client.notes %}
+                    <p>{{ client.notes }}</p>
+                {% else %}
+                    <p class="text-muted">No notes available for this client.</p>
+                {% endif %}
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addNoteBtn">
+                    <i class="fas fa-plus"></i> Add Note
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Session History</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#scheduleSessionModal">
+                    <i class="fas fa-plus"></i> New Session
+                </button>
+            </div>
+            <div class="card-body">
+                {% if sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Service Type</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                    <tr>
+                                        <td>{{ session.session_date }}</td>
+                                        <td>
+                                            {% if session.status == 'scheduled' %}
+                                                <span class="badge bg-primary">Scheduled</span>
+                                            {% elif session.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif session.status == 'canceled' %}
+                                                <span class="badge bg-danger">Canceled</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ session.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if 'jail' in session.notes|lower %}
+                                                <span class="badge bg-danger">Jail</span>
+                                            {% elif 'hospital' in session.notes|lower %}
+                                                <span class="badge bg-purple">Hospital</span>
+                                            {% elif 'travel' in session.notes|lower %}
+                                                <span class="badge bg-info">Travel</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Standard</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-truncate" style="max-width: 150px;">{{ session.notes }}</td>
+                                        <td>
+                                            <a href="{{ url_for('session_detail', session_id=session.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        No sessions found for this client. <a href="#" data-bs-toggle="modal" data-bs-target="#scheduleSessionModal">Schedule a session</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Call History</h5>
+            </div>
+            <div class="card-body">
+                {% if calls %}
+                    <div class="list-group">
+                        {% for call in calls %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ call.date }}</h6>
+                                    <span class="badge bg-info">{{ call.duration }}</span>
+                                </div>
+                                <p class="mb-1">{{ call.transcript|truncate(100) }}</p>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-phone me-1"></i> {{ call.call_type }}
+                                    </small>
+                                    <div>
+                                        <a href="{{ url_for('session_detail', session_id=call.session_id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-file-alt"></i> Transcript
+                                        </a>
+                                        {% if call.recording_url %}
+                                            <button class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-play"></i> Play
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">No call history available for this client.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Client Modal -->
+<div class="modal fade" id="editClientModal" tabindex="-1" aria-labelledby="editClientModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editClientModalLabel">Edit Client</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editClientForm">
+                    <div class="mb-3">
+                        <label for="editClientName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="editClientName" value="{{ client.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editClientPhone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="editClientPhone" value="{{ client.phone }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editClientAddress" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="editClientAddress" value="{{ client.address }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editClientEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="editClientEmail" value="{{ client.email }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editClientNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="editClientNotes" rows="3">{{ client.notes }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateClientBtn">Update Client</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Client Modal -->
+<div class="modal fade" id="deleteClientModal" tabindex="-1" aria-labelledby="deleteClientModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteClientModalLabel">Delete Client</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ client.name }}</strong>?</p>
+                <p class="text-danger">This will also delete all sessions, documents, and call recordings associated with this client. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteClientBtn">Delete Client</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Session Modal -->
+<div class="modal fade" id="scheduleSessionModal" tabindex="-1" aria-labelledby="scheduleSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleSessionModalLabel">Schedule New Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleSessionForm">
+                    <div class="mb-3">
+                        <label for="sessionDate" class="form-label">Date & Time</label>
+                        <input type="datetime-local" class="form-control" id="sessionDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sessionServiceType" class="form-label">Service Type</label>
+                        <select class="form-control" id="sessionServiceType">
+                            <option value="standard">Standard</option>
+                            <option value="travel">Travel</option>
+                            <option value="hospital">Hospital</option>
+                            <option value="jail">Jail</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sessionLocation" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="sessionLocation" value="{{ client.address }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sessionNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="sessionNotes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveSessionBtn">Schedule Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal fade" id="addNoteModal" tabindex="-1" aria-labelledby="addNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNoteModalLabel">Add Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addNoteForm">
+                    <div class="mb-3">
+                        <label for="noteContent" class="form-label">Note</label>
+                        <textarea class="form-control" id="noteContent" rows="4" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveNoteBtn">Save Note</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Client not found</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Update client
+        $('#updateClientBtn').click(function() {
+            alert('In a production environment, this would update the client details in the database.');
+            $('#editClientModal').modal('hide');
+        });
+        
+        // Delete client
+        $('#confirmDeleteClientBtn').click(function() {
+            alert('In a production environment, this would delete the client from the database.');
+            $('#deleteClientModal').modal('hide');
+            // Redirect to clients list in a real implementation
+            window.location.href = "{{ url_for('clients_list') }}";
+        });
+        
+        // Schedule session
+        $('#saveSessionBtn').click(function() {
+            alert('In a production environment, this would schedule a new session in the database.');
+            $('#scheduleSessionModal').modal('hide');
+        });
+        
+        // Add note
+        $('#addNoteBtn').click(function() {
+            $('#addNoteModal').modal('show');
+        });
+        
+        $('#saveNoteBtn').click(function() {
+            alert('In a production environment, this would add a note to the client in the database.');
+            $('#addNoteModal').modal('hide');
+        });
+        
+        // Send message
+        $('#sendMessageBtn').click(function() {
+            alert('In a production environment, this would open a message composer to send an SMS to the client.');
+        });
+    });
+</script>
+{% endblock %} 

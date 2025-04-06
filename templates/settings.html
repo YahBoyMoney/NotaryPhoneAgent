@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Notary Voice Agent Admin{% endblock %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="list-group mb-4">
+            <a href="#generalSettings" class="list-group-item list-group-item-action active" data-bs-toggle="tab">
+                <i class="fas fa-cog"></i> General Settings
+            </a>
+            <a href="#notificationSettings" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                <i class="fas fa-bell"></i> Notifications
+            </a>
+            <a href="#twillioSettings" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                <i class="fas fa-phone"></i> Twilio Integration
+            </a>
+            <a href="#elevenlabsSettings" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                <i class="fas fa-microphone"></i> ElevenLabs
+            </a>
+            <a href="#supabaseSettings" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                <i class="fas fa-database"></i> Database
+            </a>
+            <a href="#accountSettings" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+                <i class="fas fa-user-shield"></i> Account
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="tab-content">
+            <!-- General Settings Tab -->
+            <div class="tab-pane fade show active" id="generalSettings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>General Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="generalSettingsForm">
+                            <div class="mb-3">
+                                <label for="businessName" class="form-label">Business Name</label>
+                                <input type="text" class="form-control" id="businessName" value="Notary Voice Agent">
+                            </div>
+                            <div class="mb-3">
+                                <label for="businessPhone" class="form-label">Business Phone</label>
+                                <input type="tel" class="form-control" id="businessPhone" value="(555) 123-4567">
+                            </div>
+                            <div class="mb-3">
+                                <label for="businessEmail" class="form-label">Business Email</label>
+                                <input type="email" class="form-control" id="businessEmail" value="contact@notaryvoice.com">
+                            </div>
+                            <div class="mb-3">
+                                <label for="defaultServiceType" class="form-label">Default Service Type</label>
+                                <select class="form-control" id="defaultServiceType">
+                                    <option value="standard" selected>Standard</option>
+                                    <option value="travel">Travel</option>
+                                    <option value="hospital">Hospital</option>
+                                    <option value="jail">Jail</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-primary" id="saveGeneralSettingsBtn">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notification Settings Tab -->
+            <div class="tab-pane fade" id="notificationSettings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Notification Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="notificationSettingsForm">
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
+                                <label class="form-check-label" for="emailNotifications">Email Notifications</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="smsNotifications" checked>
+                                <label class="form-check-label" for="smsNotifications">SMS Notifications</label>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notification Preferences</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="newSessionNotification" checked>
+                                    <label class="form-check-label" for="newSessionNotification">New Sessions</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sessionReminderNotification" checked>
+                                    <label class="form-check-label" for="sessionReminderNotification">Session Reminders</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sessionChangeNotification" checked>
+                                    <label class="form-check-label" for="sessionChangeNotification">Session Changes</label>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" id="saveNotificationSettingsBtn">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Twilio Settings Tab -->
+            <div class="tab-pane fade" id="twillioSettings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Twilio Integration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="twillioSettingsForm">
+                            <div class="mb-3">
+                                <label for="twillioAccountSid" class="form-label">Account SID</label>
+                                <input type="text" class="form-control" id="twillioAccountSid" value="AC*****************************">
+                            </div>
+                            <div class="mb-3">
+                                <label for="twillioAuthToken" class="form-label">Auth Token</label>
+                                <input type="password" class="form-control" id="twillioAuthToken" value="*************************">
+                            </div>
+                            <div class="mb-3">
+                                <label for="twillioPhoneNumber" class="form-label">Phone Number</label>
+                                <input type="text" class="form-control" id="twillioPhoneNumber" value="+1555123****">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="saveTwillioSettingsBtn">Save Changes</button>
+                            <button type="button" class="btn btn-outline-secondary" id="testTwillioBtn">Test Connection</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ElevenLabs Settings Tab -->
+            <div class="tab-pane fade" id="elevenlabsSettings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>ElevenLabs Integration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="elevenlabsSettingsForm">
+                            <div class="mb-3">
+                                <label for="elevenlabsApiKey" class="form-label">API Key</label>
+                                <input type="password" class="form-control" id="elevenlabsApiKey" value="**************************">
+                            </div>
+                            <div class="mb-3">
+                                <label for="elevenlabsVoiceId" class="form-label">Voice ID</label>
+                                <input type="text" class="form-control" id="elevenlabsVoiceId" value="21m00Tcm4TlvDq8ikWAM">
+                            </div>
+                            <div class="mb-3">
+                                <label for="elevenlabsAgentId" class="form-label">Agent ID</label>
+                                <input type="text" class="form-control" id="elevenlabsAgentId" value="your_elevenlabs_agent_id_here">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="saveElevenlabsSettingsBtn">Save Changes</button>
+                            <button type="button" class="btn btn-outline-secondary" id="testElevenlabsBtn">Test Voice</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Supabase Settings Tab -->
+            <div class="tab-pane fade" id="supabaseSettings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Database Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="supabaseSettingsForm">
+                            <div class="mb-3">
+                                <label for="supabaseUrl" class="form-label">Supabase URL</label>
+                                <input type="text" class="form-control" id="supabaseUrl" value="https://qiaxmvitjdwksfmvtrbd.supabase.co">
+                            </div>
+                            <div class="mb-3">
+                                <label for="supabaseKey" class="form-label">Supabase Key</label>
+                                <input type="password" class="form-control" id="supabaseKey" value="eyJhbGciOiJ*********************">
+                            </div>
+                            <div class="mb-3">
+                                <label for="agentId" class="form-label">Agent ID</label>
+                                <input type="text" class="form-control" id="agentId" value="00000000-0000-0000-0000-000000000001">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="saveSupabaseSettingsBtn">Save Changes</button>
+                            <button type="button" class="btn btn-outline-secondary" id="testSupabaseBtn">Test Connection</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Account Settings Tab -->
+            <div class="tab-pane fade" id="accountSettings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Account Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="accountSettingsForm">
+                            <div class="mb-3">
+                                <label for="adminUsername" class="form-label">Admin Username</label>
+                                <input type="text" class="form-control" id="adminUsername" value="admin">
+                            </div>
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="currentPassword">
+                            </div>
+                            <div class="mb-3">
+                                <label for="newPassword" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="newPassword">
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirmPassword">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="saveAccountSettingsBtn">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Save settings buttons
+        $('#saveGeneralSettingsBtn, #saveNotificationSettingsBtn, #saveTwillioSettingsBtn, #saveElevenlabsSettingsBtn, #saveSupabaseSettingsBtn, #saveAccountSettingsBtn').click(function() {
+            alert('In a production environment, this would save settings to the database.');
+        });
+        
+        // Test connection buttons
+        $('#testTwillioBtn').click(function() {
+            alert('In a production environment, this would test the Twilio integration.');
+        });
+        
+        $('#testElevenlabsBtn').click(function() {
+            alert('In a production environment, this would test the ElevenLabs voice synthesis.');
+        });
+        
+        $('#testSupabaseBtn').click(function() {
+            alert('In a production environment, this would test the Supabase connection.');
+        });
+        
+        // Check password match
+        $('#newPassword, #confirmPassword').on('keyup', function() {
+            if ($('#newPassword').val() === $('#confirmPassword').val()) {
+                $('#confirmPassword').removeClass('is-invalid').addClass('is-valid');
+            } else {
+                $('#confirmPassword').removeClass('is-valid').addClass('is-invalid');
+            }
+        });
+    });
+</script>
+{% endblock %} 
